@@ -836,7 +836,7 @@ img {
   overflow: hidden;
 }
 .detail-photo img {
-  object-fit: cover;
+  object-fit: contain;
 }
 .detail-summary {
   padding-top: 11px;
