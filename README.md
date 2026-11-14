@@ -79,10 +79,12 @@ The local browser configuration uses Google Chrome at its standard macOS applica
 
 Deploy this Next.js repository to Vercel with Node.js 24. Apply the migration and configure the three required server variables in the target environment. Do not give preview deployments production secrets by default. Confirm the production URL is public and rerun the create, browse, detail, and messaging flow there.
 
+Live application: https://marketplace-pi-sage.vercel.app
+
 Repository: https://github.com/2peng23/marketplace
 
 ## Screenshots and showreel
 
 Submission screenshots and the separate 60-second showreel are delivered outside source control. All video, audio, capture, and render outputs are ignored by both Git and Vercel packaging. There is no embedded showreel or video dependency in the application.
 
-The film uses the completed application and the requested ElevenLabs voice `T2sZgOl8ol4kf4u6yM2z`. Rendering sources and media delivery status are provided separately with the final artifacts.
+The requested narration voice for the film is `T2sZgOl8ol4kf4u6yM2z`. Rendering sources and media delivery status are provided separately with the final artifacts.
