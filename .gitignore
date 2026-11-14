@@ -1,0 +1,23 @@
+node_modules/
+.next/
+.vercel/
+.env*
+!.env.example
+playwright-report/
+test-results/
+coverage/
+*.tsbuildinfo
+.DS_Store
+# All video, audio, and render outputs stay outside source control.
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.wav
+*.mp3
+*.m4a
+*.aac
+showreel/
+renders/
+captures/
+artifacts/

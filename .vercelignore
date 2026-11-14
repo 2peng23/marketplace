@@ -1,0 +1,17 @@
+.git
+.env*
+!.env.example
+node_modules
+.next
+tests
+test-results
+playwright-report
+showreel
+renders
+captures
+artifacts
+*.mp4
+*.mov
+*.webm
+*.wav
+*.mp3

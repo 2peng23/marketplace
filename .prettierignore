@@ -1,0 +1,8 @@
+.next/
+.vercel/
+node_modules/
+artifacts/
+test-results/
+playwright-report/
+.env*
+package-lock.json
