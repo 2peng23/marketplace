@@ -41,7 +41,8 @@ export function SellerPayments({
   const router = useRouter();
   const [country, setCountry] = useState(seller.country || countryOptions.defaultCountry);
   const [pending, setPending] = useState('');
-  const [error, setError] = useState(initialError || '');
+  const [error, setError] = useState('');
+  const visibleError = error || initialError;
   const ready = seller.paymentStatus === 'active';
 
   async function runAction(action: string, operation: () => Promise<void>) {
@@ -142,9 +143,9 @@ export function SellerPayments({
                   ? 'Continue setup'
                   : 'Connect with Stripe'}
           </Button>
-          {seller.connected && (
+          {(seller.connected || Boolean(initialError)) && (
             <>
-              {ready ? (
+              {ready && !initialError ? (
                 <Button
                   variant="outline"
                   disabled={Boolean(pending)}
@@ -173,9 +174,9 @@ export function SellerPayments({
             </>
           )}
         </div>
-        {error && (
+        {visibleError && (
           <p className="payment-error" role="alert">
-            {error}
+            {visibleError}
           </p>
         )}
         <Button
