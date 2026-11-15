@@ -41,7 +41,7 @@ The optional `npm run db:setup` command applies all migrations through the Supab
 | `scripts`                           | Local setup, optional demonstration data, and icon generation.             |
 | `tests`                             | Contract, HTTP, storage, and browser regression checks.                    |
 
-The app uses local component state and one dialog context. Supabase Auth verifies seller emails; there is no password or general account-registration screen. Database, SMTP, and Stripe modules remain server-only.
+The app uses local component state and one dialog context. Sellers are identified by their listing email without an app login. Database, SMTP, and Stripe modules remain server-only.
 
 Payment code has four focused responsibilities: `seller-context.ts` remembers the email-selected seller in a signed cookie, `seller-payments.ts` manages connected accounts, `checkout.ts` coordinates orders and reservations, and `stripe-events.ts` verifies and commits provider events. `payments.ts` holds shared contracts and exact money calculations.
 
@@ -117,4 +117,4 @@ Deploy to Vercel with Node.js 24 after applying the migrations and configuring s
 - Live app: [marketplace-pi-sage.vercel.app](https://marketplace-pi-sage.vercel.app)
 - Repository: [2peng23/marketplace](https://github.com/2peng23/marketplace)
 
-The generated reel, captions, poster, editable-source archive, and submission archive are in `Marketplace Video/`. The entire folder is excluded from Git, Vercel uploads, linting, formatting, and TypeScript. Submission screenshots remain in the ignored `artifacts/` folder. No video dependency is included in the application.
+The generated reel, captions, poster, QA notes, and editable Remotion source are in `Marketplace Video/`. The entire folder is excluded from Git, Vercel uploads, linting, formatting, and TypeScript. Submission screenshots remain in the ignored `artifacts/` folder. No video dependency is included in the application.
