@@ -23,7 +23,11 @@ export async function findPublishedListing(input: ListingInput) {
   return { id: listing.id, created: false };
 }
 
-export async function publishListing(input: ListingInput, image: Buffer) {
+export async function publishListing(
+  input: ListingInput,
+  image: Buffer,
+  sellerId: string | null = null,
+) {
   const supabase = getSupabase();
   const imagePath = `${input.requestId}/photo.webp`;
   const upload = await supabase.storage
@@ -42,6 +46,7 @@ export async function publishListing(input: ListingInput, image: Buffer) {
     category: input.category,
     seller_email: input.sellerEmail,
     image_path: imagePath,
+    seller_id: sellerId,
   });
   if (result.error) {
     // Delete only our upload, and only after confirming no listing references it.

@@ -19,6 +19,7 @@ export function ListingCard({
     <Card className="listing-card">
       <Link href={destination} className="listing-card-link">
         <div className="listing-image">
+          {listing.sale_status === 'sold' && <span className="listing-sale-badge">Sold</span>}
           <Image
             src={image}
             alt={listing.title}

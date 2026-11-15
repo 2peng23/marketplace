@@ -987,3 +987,268 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Seller payments and one-item checkout share the marketplace's existing type and controls. */
+.payment-page {
+  max-width: 1100px;
+  padding-block: 28px 56px;
+}
+.payment-back-link {
+  display: inline-block;
+  color: var(--primary);
+  font-size: 13px;
+  margin-bottom: 22px;
+}
+.payment-back-link:hover {
+  text-decoration: underline;
+}
+.payment-page-heading {
+  margin-bottom: 24px;
+}
+.payment-page-heading h1 {
+  font-size: 28px;
+  margin-bottom: 7px;
+}
+.payment-page-heading p,
+.payment-panel > p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+.seller-payments-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.payment-panel {
+  padding: 26px;
+  border: 1px solid #dce0e5;
+  border-radius: 10px;
+  background: white;
+  min-width: 0;
+}
+.payment-panel h2 {
+  font-size: 19px;
+  line-height: 1.35;
+  margin-bottom: 12px;
+}
+.payment-panel > p + p {
+  margin-top: 12px;
+}
+.seller-access {
+  max-width: 500px;
+}
+.seller-access form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 24px;
+}
+.seller-access form > button {
+  align-self: flex-start;
+}
+.payment-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+.payment-inline-actions button {
+  padding: 0;
+}
+.seller-panel-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.sandbox-label {
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 4px;
+  color: #515b69;
+  background: #eef0f3;
+  white-space: nowrap;
+}
+.seller-verified-email {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  margin-bottom: 16px;
+}
+.payment-panel .payment-fee-note {
+  font-size: 12px;
+  padding-top: 15px;
+  margin-top: 18px;
+  border-top: 1px solid #e3e7ed;
+}
+.seller-country-field {
+  margin-top: 22px;
+}
+.seller-country-field select {
+  height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  font: inherit;
+}
+.payment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+.payment-panel .payment-error,
+.payment-error {
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 14px;
+}
+.payment-panel .payment-notice {
+  padding: 12px;
+  border: 1px solid #cadcf7;
+  border-radius: 6px;
+  background: #f4f8ff;
+  color: #315d9b;
+  font-size: 13px;
+  margin-top: 18px;
+}
+.seller-signout {
+  font-size: 12px;
+  margin-top: 20px;
+  padding-inline: 0;
+  color: var(--muted);
+}
+.seller-listings {
+  list-style: none;
+  margin: 20px 0;
+  padding: 0;
+}
+.seller-listings li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 0;
+  border-top: 1px solid #e3e7ed;
+}
+.seller-listings li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.seller-listings a {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.seller-listings a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.seller-listings li > div > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.seller-listing-state {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.payment-panel .seller-empty {
+  margin-block: 20px;
+}
+.listing-purchase {
+  margin-block: 18px 20px;
+}
+.buy-now-button {
+  width: 100%;
+  min-height: 42px;
+  font-size: 14px;
+}
+.listing-purchase .field-help {
+  margin-top: 8px;
+}
+.listing-purchase-state {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 12px;
+  background: #e8ebef;
+  border-radius: 6px;
+}
+.listing-sale-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  padding: 5px 9px;
+  background: #1c2533;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.checkout-page {
+  max-width: 650px;
+  padding-block: 48px 64px;
+}
+.order-confirmation .sandbox-label {
+  display: inline-block;
+  margin-bottom: 20px;
+}
+.order-confirmation h1 {
+  font-size: 27px;
+  line-height: 1.25;
+  margin-bottom: 14px;
+}
+.order-details {
+  margin: 24px 0 0;
+}
+.order-details > div {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 16px;
+  padding-block: 13px;
+  border-top: 1px solid #e3e7ed;
+}
+.order-details dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+.order-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+.order-details .order-reference {
+  font-size: 12px;
+  font-weight: 400;
+  align-self: center;
+}
+@media (max-width: 760px) {
+  .seller-payments-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .payment-page {
+    padding-top: 20px;
+  }
+  .payment-page-heading h1 {
+    font-size: 25px;
+  }
+  .payment-panel {
+    padding: 22px 20px;
+  }
+  .seller-access input,
+  .seller-country-field select {
+    font-size: 16px;
+  }
+  .checkout-page {
+    padding-block: 24px 40px;
+  }
+  .order-confirmation h1 {
+    font-size: 24px;
+  }
+}

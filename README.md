@@ -1,6 +1,6 @@
 # Marketplace
 
-A no-login marketplace built with Next.js, React, Supabase, and shadcn/ui. Visitors can publish a photo listing, filter and search items, open a listing directly, and send its seller a private inquiry by email.
+A marketplace built with Next.js, React, Supabase, and shadcn/ui. Browsing, posting, messaging, and sandbox checkout need no account. Sellers verify their listing email before configuring Stripe payments.
 
 ## Run locally
 
@@ -41,7 +41,32 @@ The optional `npm run db:setup` command applies all migrations through the Supab
 | `scripts`                           | Local setup, optional demonstration data, and icon generation.             |
 | `tests`                             | Contract, HTTP, storage, and browser regression checks.                    |
 
-The app uses local component state and one dialog context. It has no authentication framework, global state store, ORM abstraction, or generic repository layer. Database and SMTP modules remain server-only.
+The app uses local component state and one dialog context. Supabase Auth verifies seller emails; there is no password or general account-registration screen. Database, SMTP, and Stripe modules remain server-only.
+
+Payment code has four focused responsibilities: `seller-session.ts` verifies email and sessions, `seller-payments.ts` manages connected accounts, `checkout.ts` coordinates orders and reservations, and `stripe-events.ts` verifies and commits provider events. `payments.ts` holds shared contracts and exact money calculations.
+
+## Stripe Connect sandbox
+
+This extends Test 3 with seller onboarding, one-item Stripe Checkout, a 10% platform fee, webhook-confirmed orders, and Sold listings. Use the supplied sandbox; live keys and live events are rejected.
+
+1. Apply `003_stripe_connect.sql` after the earlier migrations. It adds private sellers, orders, and webhook receipts, along with transactional reservation and confirmation functions. Existing data is retained.
+2. Run `npm run stripe:setup` to enter the supplied secret in a loopback-only masked form. It verifies test mode and saves `.env.local` with owner-only permissions. Set the supplied `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` there too; hosted redirects currently do not need a browser Stripe SDK.
+3. Set `APP_URL` to the canonical public HTTPS origin. Set the Stripe variables and existing SMTP/Supabase variables in Vercel, then deploy the webhook route.
+4. Run `npm run stripe:webhook` locally. This creates a **Connect** endpoint at `/api/stripe/webhook` and saves its signing secret and endpoint ID in `.env.local` without printing the secret. Copy `STRIPE_WEBHOOK_SECRET` securely into Vercel and redeploy. Checkout stays disabled until a signing secret is configured.
+
+The endpoint listens for Checkout completion/expiration and `account.updated`. It ignores other candidates' accounts and orders in the shared sandbox. The script reuses its recorded endpoint on subsequent runs and does not delete shared endpoints. If the sandbox has reached its endpoint limit, ask the test owner to free a slot or provide a separate sandbox; leave checkout disabled until registration succeeds. A Stripe CLI listener has its own temporary signing secret. Remove it after any controlled verification run; the deployed app needs its permanent endpoint's signing secret.
+
+The integration uses Stripe SDK 23.1.0, Accounts v2, hosted onboarding, and **direct charges on the seller's connected account**. The supplied platform requires Stripe-managed risk. Express account creation uses Stripe's documented `2026-10-28.preview` version for that combination; other requests use stable API `2026-10-28.endive`. This preview dependency is isolated to account creation. Stripe collects processing fees separately from our 10% application fee. There is no promise of an immediate bank payout. The Connect snapshot endpoint also receives v1-compatible account updates from v2 accounts; readiness is retrieved through the v2 merchant card-payments capability.
+
+Seller verification uses Supabase-generated email OTPs delivered through the existing Gmail SMTP transport. Codes and session tokens are never returned in JSON or logged. A server-validated, HttpOnly seller session lasts up to one hour. An explicit Link listing action verifies that the stored seller email matches the verified identity and atomically binds ownership. Browser-local listing IDs do not authorize payments. New listings posted by that verified seller are linked automatically when their emails match.
+
+Prices remain USD. Database reservations snapshot integer cents and round a half-cent platform fee upward. Free listings, prices under $0.50, and amounts exceeding Stripe's supported eight-digit cent range remain contact-only. Hosted Checkout is restricted to cards.
+
+Only one creating, pending, or paid order can exist per listing. Reservations and sale confirmation lock the listing in Postgres. Stripe creation retries reuse a stable idempotency key and the original price snapshot. Checkout expires after one hour. Cancellation first expires the payable Stripe session; a cancellation redirect alone does not release inventory. Interrupted creation is reconciled against this app's connected account before a stale reservation is released. Uncertain outcomes remain reserved until recovery can establish their state.
+
+The webhook requires the original body and a valid signature, checks the connected-account scope, amount, currency, application fee, and payment status, then records the event, confirms the order, and marks Sold in one transaction. Duplicate or late expiration events cannot undo a paid order. The confirmation page waits for this database state and is accessible only to the originating buyer browser through an HttpOnly capability cookie.
+
+Test the deployed flow with a verified seller email, supported Stripe test identity/bank details, and card `4242 4242 4242 4242` with a future expiry and test CVC. Also check a declined card and an authentication challenge. Confirm the application fee on the connected charge, the private Supabase order, and Sold state. The app does not add shipping, taxes, subscriptions, or a refund dashboard.
 
 ## Behavior and data boundaries
 
@@ -73,12 +98,15 @@ For deployment, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
 npm run lint
 npm run typecheck
 npm test
+npm run test:payments:database
 npm run test:e2e
 ```
 
 The browser suite builds the production app, starts it on port 3002, and uses a local SMTP receiver on port 3025. Configure Supabase credentials and `SUPABASE_PUBLISHABLE_KEY` in `.env.local`. The suite creates identifiable disposable records, verifies persistence and permission boundaries, and removes its records and images afterward. It does not send external email. Use a dedicated test database when available.
 
 The local Playwright configuration uses Google Chrome at its standard macOS path. Adjust `launchOptions.executablePath` for another platform. Unit tests run with React’s server condition so server-only HTTP helpers can be tested directly.
+
+The opt-in payment database check exercises simultaneous reservations, cross-seller claim rejection, duplicate confirmations, transaction rollback, late expiry, and anonymous access against Postgres. It creates and removes identifiable temporary records; use a dedicated test project when available. Browser checks capture verification emails locally, validate the seller session, claim a listing, and reject unauthenticated financial actions. Provider-hosted onboarding and real sandbox Checkout require a separate end-to-end walkthrough.
 
 `npm run build` also runs independently when only production compilation is needed. To add labeled demonstration listings, run `npm run db:seed`; stock image URLs are recorded in `scripts/seed.ts`. To regenerate the favicon and Apple touch icon from `public/icon.svg`, run `node scripts/generate-icons.mjs`.
 

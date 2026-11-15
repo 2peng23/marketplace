@@ -26,7 +26,7 @@ function checkRequest(request: Request, maximumBytes: number) {
   }
 }
 
-async function readBody(request: Request, maximumBytes: number) {
+export async function readRawBody(request: Request, maximumBytes: number) {
   checkRequest(request, maximumBytes);
   const reader = request.body?.getReader();
   if (!reader) return Buffer.alloc(0);
@@ -50,7 +50,7 @@ async function readBody(request: Request, maximumBytes: number) {
 }
 
 export async function readJson(request: Request, maximumBytes: number): Promise<unknown> {
-  const body = await readBody(request, maximumBytes);
+  const body = await readRawBody(request, maximumBytes);
   try {
     return JSON.parse(body.toString('utf8')) as unknown;
   } catch {
@@ -59,7 +59,7 @@ export async function readJson(request: Request, maximumBytes: number): Promise<
 }
 
 export async function readForm(request: Request, maximumBytes: number) {
-  const body = await readBody(request, maximumBytes);
+  const body = await readRawBody(request, maximumBytes);
   const contentType = request.headers.get('content-type') ?? '';
   if (!contentType.toLowerCase().startsWith('multipart/form-data'))
     throw new RequestError('This listing could not be read.');

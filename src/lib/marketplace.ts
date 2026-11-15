@@ -19,6 +19,7 @@ export type Listing = {
   seller_email: string;
   image_path: string;
   created_at: string;
+  sale_status: 'available' | 'reserved' | 'sold';
 };
 export type ListingPage = { items: Listing[]; count: number };
 export type ListingFeedPage = {

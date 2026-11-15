@@ -3,7 +3,16 @@ import { createHmac } from 'node:crypto';
 import { getSupabase } from './supabase';
 import { ConfigurationError, RequestError } from './errors';
 
-export async function enforceRateLimit(request: Request, action: 'listing' | 'message') {
+const hourlyLimits = {
+  listing: 20,
+  message: 40,
+  'seller-code': 8,
+  'seller-verify': 30,
+  checkout: 40,
+  connect: 30,
+} as const;
+
+export async function enforceRateLimit(request: Request, action: keyof typeof hourlyLimits) {
   const salt = process.env.RATE_LIMIT_SALT;
   if (!salt) throw new ConfigurationError('Write protection is not configured.');
   const address =
@@ -13,7 +22,7 @@ export async function enforceRateLimit(request: Request, action: 'listing' | 'me
   const bucket = createHmac('sha256', salt).update(`${action}:${address}`).digest('hex');
   const { data, error } = await getSupabase().rpc('consume_rate_limit', {
     bucket_key: bucket,
-    maximum_hits: action === 'listing' ? 20 : 40,
+    maximum_hits: hourlyLimits[action],
   });
   if (error) throw new RequestError('Please try again in a moment.', 503);
   if (!data)

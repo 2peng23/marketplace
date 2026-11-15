@@ -15,7 +15,10 @@
     "test:e2e": "playwright test",
     "db:setup": "tsx scripts/setup-database.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "email:setup": "tsx scripts/configure-email.ts"
+    "email:setup": "tsx scripts/configure-email.ts",
+    "stripe:setup": "tsx scripts/configure-stripe.ts",
+    "stripe:webhook": "node --env-file=.env.local scripts/create-webhook.mjs",
+    "test:payments:database": "RUN_PAYMENT_DATABASE_TESTS=true tsx --conditions=react-server --test tests/payments-database.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",
@@ -29,6 +32,7 @@
     "react-dom": "19.3.1",
     "server-only": "^0.0.1",
     "sharp": "0.35.5",
+    "stripe": "23.1.0",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.3.6"
   },

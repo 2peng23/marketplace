@@ -22,6 +22,7 @@ export default defineConfig({
       SMTP_FROM: 'marketplace@example.test',
       SMTP_SECURE: 'false',
       NEXT_PUBLIC_SITE_URL: 'http://127.0.0.1:3002',
+      APP_URL: 'http://127.0.0.1:3002',
     },
   },
   use: {

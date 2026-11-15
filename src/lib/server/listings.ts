@@ -22,7 +22,7 @@ export const findListing = cache(async (identifier: string): Promise<Listing | n
   if (!identifierSchema.safeParse(identifier).success) return null;
   const { data, error } = await getSupabase()
     .from('listings')
-    .select('id,title,description,price,category,seller_email,image_path,created_at')
+    .select('id,title,description,price,category,seller_email,image_path,created_at,sale_status')
     .eq('id', identifier)
     .maybeSingle();
   if (error) throw new Error('This listing could not be loaded.');
@@ -43,7 +43,9 @@ export async function findBrowserListings(
     batches.map((batch) =>
       getSupabase()
         .from('listings')
-        .select('id,title,description,price,category,seller_email,image_path,created_at')
+        .select(
+          'id,title,description,price,category,seller_email,image_path,created_at,sale_status',
+        )
         .in('id', batch),
     ),
   );

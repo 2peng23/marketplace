@@ -82,6 +82,7 @@ export const listingFeedSchema = z.object({
       seller_email: z.string(),
       image_path: z.string(),
       created_at: z.string(),
+      sale_status: z.enum(['available', 'reserved', 'sold']).default('available'),
       imageUrl: z.url(),
     }),
   ),

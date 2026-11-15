@@ -30,6 +30,11 @@ export function MarketplaceSidebar({
             </Link>
           </Button>
         </nav>
+        <nav aria-label="Seller tools">
+          <Button variant="ghost" asChild className="sidebar-nav-link">
+            <Link href="/seller">Seller payments</Link>
+          </Button>
+        </nav>
         <Separator />
         <nav className="category-navigation" aria-label="Filter listings by category">
           <h2 className="sidebar-title">Categories</h2>

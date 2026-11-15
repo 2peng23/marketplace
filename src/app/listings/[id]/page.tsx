@@ -9,6 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft } from 'lucide-react';
+import { BuyNow } from '@/components/buy-now';
+import { listingCanAcceptPayments } from '@/lib/server/seller-payments';
+import { buyerCheckoutForListing } from '@/lib/server/checkout';
+import { priceInCents, MINIMUM_CHECKOUT_CENTS, MAXIMUM_CHECKOUT_CENTS } from '@/lib/payments';
+import { checkoutConfigured } from '@/lib/server/stripe';
 
 export const dynamic = 'force-dynamic';
 type PageProperties = {
@@ -26,6 +31,13 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
   const listing = await findListing((await params).id);
   if (!listing) notFound();
   const parameters = await searchParams;
+  const amount = priceInCents(listing.price);
+  const [sellerReady, resumeOrderId] = await Promise.all([
+    checkoutConfigured() && amount >= MINIMUM_CHECKOUT_CENTS && amount <= MAXIMUM_CHECKOUT_CENTS
+      ? listingCanAcceptPayments(listing.id)
+      : false,
+    listing.sale_status === 'reserved' ? buyerCheckoutForListing(listing.id) : null,
+  ]);
   const from = browseReturnUrl(parameters.from);
   return (
     <main id="main-content" className="page-container detail-main">
@@ -53,6 +65,12 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
         <section className="detail-summary">
           <h1>{listing.title}</h1>
           <p className="detail-price">{formatPrice(listing.price)}</p>
+          <BuyNow
+            listingId={listing.id}
+            status={listing.sale_status}
+            eligible={sellerReady}
+            resumeOrderId={resumeOrderId}
+          />
           <p className="listed-date">
             Listed{' '}
             {new Intl.DateTimeFormat('en-US', {
