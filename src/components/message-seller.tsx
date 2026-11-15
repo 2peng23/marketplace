@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState, type FormEvent } from 'react';
-import { messageSchema, validationFields } from '@/lib/validation';
+import { messageSchema, messageSentSchema, validationFields } from '@/lib/validation';
+import { ApiError, requestJson } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,12 +19,8 @@ export function MessageSeller({ listingId, title }: { listingId: string; title: 
     event.preventDefault();
     if (submitting) return;
     const form = new FormData(event.currentTarget);
-    const contents = JSON.stringify([form.get('buyerEmail'), form.get('message')]);
-    if (!requestIdentifier.current.id || requestIdentifier.current.contents !== contents) {
-      requestIdentifier.current = { id: crypto.randomUUID(), contents };
-    }
     const input = {
-      requestId: requestIdentifier.current.id,
+      requestId: requestIdentifier.current.id || crypto.randomUUID(),
       listingId,
       buyerEmail: form.get('buyerEmail'),
       message: form.get('message'),
@@ -34,19 +31,18 @@ export function MessageSeller({ listingId, title }: { listingId: string; title: 
       setFields(validationFields(result.error));
       return;
     }
+    const contents = JSON.stringify([listingId, result.data.buyerEmail, result.data.message]);
+    if (!requestIdentifier.current.id || requestIdentifier.current.contents !== contents)
+      requestIdentifier.current = { id: crypto.randomUUID(), contents };
+    const submission = { ...result.data, requestId: requestIdentifier.current.id };
     setFields({});
     setSubmitting(true);
     try {
-      const response = await fetch('/api/messages', {
+      const payload = await requestJson('/api/messages', messageSentSchema, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result.data),
+        body: JSON.stringify(submission),
       });
-      const payload = await response.json();
-      if (!response.ok) {
-        setFields(payload.fields ?? {});
-        throw new Error(payload.error ?? 'Please try again.');
-      }
       if (payload.emailSent) {
         setSaved(true);
         setEmailError('');
@@ -56,6 +52,7 @@ export function MessageSeller({ listingId, title }: { listingId: string; title: 
             'Your message is saved, but email could not be sent. Please try again.',
         );
     } catch (failure) {
+      if (failure instanceof ApiError) setFields(failure.fields);
       setError(failure instanceof Error ? failure.message : 'Please try again.');
     } finally {
       setSubmitting(false);

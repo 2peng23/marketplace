@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { listingSchema, messageSchema, priceSchema } from '../src/lib/validation';
-import { browseUrl, formatPrice } from '../src/lib/marketplace';
+import { browseReturnUrl, browseUrl, formatPrice } from '../src/lib/marketplace';
 
 test('money accepts free and cents, rejects negative, exponent and excess precision', () => {
   assert.equal(priceSchema.parse('0'), 0);
@@ -18,7 +18,7 @@ test('listing fields are trimmed and unsupported categories are rejected', () =>
     description: ' Solid wood. ',
     price: '85',
     category: 'furniture',
-    sellerEmail: 'Seller@example.com',
+    sellerEmail: '  Seller@example.com  ',
   };
   assert.equal(listingSchema.parse(input).title, 'A good chair');
   assert.equal(listingSchema.parse(input).sellerEmail, 'seller@example.com');
@@ -40,9 +40,22 @@ test('message contract never accepts a caller-supplied seller', () => {
   assert.equal(messageSchema.safeParse({ ...input, message: ' '.repeat(10) }).success, false);
 });
 test('browse URLs preserve literal search input and category without losing encoding', () => {
-  const url = browseUrl({ category: 'home-garden', query: 'chair & lamp?', page: 2 });
+  const url = browseUrl({ category: 'home-garden', query: 'chair & lamp?' });
   const parsed = new URL(url, 'https://marketplace.example');
   assert.equal(parsed.searchParams.get('q'), 'chair & lamp?');
   assert.equal(parsed.searchParams.get('category'), 'home-garden');
-  assert.equal(parsed.searchParams.get('page'), '2');
+  assert.equal(parsed.searchParams.has('page'), false);
+});
+
+test('listing return URLs preserve browse filters and reject external destinations', () => {
+  assert.equal(browseReturnUrl('/my-listings?q=chair'), '/my-listings?q=chair');
+  assert.equal(browseReturnUrl('/?category=furniture&q=chair'), '/?category=furniture&q=chair');
+  for (const input of [
+    'https://elsewhere.example',
+    '//elsewhere.example',
+    '/listings/not-a-browse-page',
+    ['/'],
+    null,
+  ])
+    assert.equal(browseReturnUrl(input), '/');
 });

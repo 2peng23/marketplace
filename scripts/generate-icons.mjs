@@ -2,15 +2,10 @@ import sharp from 'sharp';
 import { fileURLToPath } from 'node:url';
 import { readFile, writeFile } from 'node:fs/promises';
 const source = await readFile(new URL('../public/icon.svg', import.meta.url));
-for (const [size, name] of [
-  [180, 'apple-touch-icon.png'],
-  [192, 'icon-192.png'],
-  [512, 'icon-512.png'],
-])
-  await sharp(source)
-    .resize(size, size)
-    .png()
-    .toFile(fileURLToPath(new URL(`../public/${name}`, import.meta.url)));
+await sharp(source)
+  .resize(180, 180)
+  .png()
+  .toFile(fileURLToPath(new URL('../public/apple-touch-icon.png', import.meta.url)));
 const sizes = [16, 32, 48];
 const images = await Promise.all(
   sizes.map((size) => sharp(source).resize(size, size).png().toBuffer()),
@@ -34,4 +29,4 @@ await writeFile(
   new URL('../public/favicon.ico', import.meta.url),
   Buffer.concat([header, ...directory, ...images]),
 );
-console.log('Generated SVG, ICO, Apple, and PNG application icons.');
+console.log('Generated favicon and Apple touch icon.');

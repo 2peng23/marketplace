@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { type ListingFeedPage } from '@/lib/marketplace';
+import { browseUrl } from '@/lib/marketplace';
+import { useListingFeed, type ListingFeedOptions } from '@/hooks/use-listing-feed';
 import {
   createdListingsSnapshot,
   parseCreatedListingIds,
@@ -21,111 +22,23 @@ export function MyListingsFeed({ query }: { query: string }) {
     createdListingsSnapshot,
     emptySnapshot,
   );
-  const identifiers = parseCreatedListingIds(snapshot);
+  const identifiers = useMemo(() => parseCreatedListingIds(snapshot), [snapshot]);
   return (
     <ListingFeed
       key={`${query}:${snapshot}`}
       query={query}
       category=""
-      ownIdentifiers={identifiers}
-      returnTo="/my-listings"
+      createdListingIds={identifiers}
+      returnTo={browseUrl({ path: '/my-listings', query })}
     />
   );
 }
 
-export function ListingFeed({
-  initialPage,
-  category,
-  query,
-  returnTo,
-  ownIdentifiers,
-}: {
-  initialPage?: ListingFeedPage;
-  category: string;
-  query: string;
-  returnTo: string;
-  ownIdentifiers?: string[];
-}) {
-  const [feed, setFeed] = useState<ListingFeedPage>(
-    initialPage ?? { items: [], count: 0, nextPage: 1 },
-  );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const sentinelReference = useRef<HTMLDivElement>(null);
-  const pendingRequest = useRef<AbortController | null>(null);
-  const ownedKey = ownIdentifiers?.join(',');
-
-  const loadNext = useCallback(async () => {
-    if (pendingRequest.current || feed.nextPage === null) return;
-    const controller = new AbortController();
-    pendingRequest.current = controller;
-    try {
-      const parameters = new URLSearchParams({ page: String(feed.nextPage), category, q: query });
-      const response = await fetch(
-        `/api/${ownedKey === undefined ? 'listings' : 'my-listings'}?${parameters}`,
-        {
-          signal: controller.signal,
-          ...(ownedKey !== undefined
-            ? {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ identifiers: ownedKey ? ownedKey.split(',') : [] }),
-              }
-            : {}),
-        },
-      );
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Listings could not be loaded.');
-      if (controller.signal.aborted) return;
-      const nextFeed = result as ListingFeedPage;
-      setFeed((previous) => {
-        const existingIds = new Set(previous.items.map((listing) => listing.id));
-        return {
-          ...nextFeed,
-          items: [
-            ...previous.items,
-            ...nextFeed.items.filter((listing) => !existingIds.has(listing.id)),
-          ],
-        };
-      });
-    } catch (failure) {
-      if (!controller.signal.aborted)
-        setError(failure instanceof Error ? failure.message : 'Listings could not be loaded.');
-    } finally {
-      if (pendingRequest.current === controller) pendingRequest.current = null;
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }, [category, query, feed.nextPage, ownedKey]);
-
-  const requestMore = useCallback(() => {
-    if (pendingRequest.current || feed.nextPage === null) return;
-    setLoading(true);
-    setError('');
-    void loadNext();
-  }, [loadNext, feed.nextPage]);
-
-  useEffect(
-    () => () => {
-      pendingRequest.current?.abort();
-      pendingRequest.current = null;
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const target = sentinelReference.current;
-    if (!target || loading || error || feed.nextPage === null) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) requestMore();
-      },
-      { rootMargin: '80px' },
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [loading, error, feed.nextPage, requestMore]);
-
-  const initialLoading = !initialPage && feed.nextPage === 1 && feed.items.length === 0 && !error;
+export function ListingFeed({ returnTo, ...options }: ListingFeedOptions & { returnTo: string }) {
+  const { feed, loading, initialLoading, error, sentinelReference, requestMore } =
+    useListingFeed(options);
+  const browserList = options.createdListingIds !== undefined;
+  const filtered = Boolean(options.query || options.category);
 
   return (
     <>
@@ -152,17 +65,17 @@ export function ListingFeed({
       )}
       {!loading && !initialLoading && !error && feed.items.length === 0 && (
         <section className="empty-state">
-          <h2>{query || category ? 'No items found' : 'No listings yet'}</h2>
+          <h2>{filtered ? 'No items found' : 'No listings yet'}</h2>
           <p>
-            {query || category
+            {filtered
               ? 'Try another search or category.'
-              : ownIdentifiers
+              : browserList
                 ? 'Listings you create in this browser appear here.'
                 : 'Create the first listing.'}
           </p>
-          {query || category ? (
+          {filtered ? (
             <Button asChild>
-              <Link href={ownIdentifiers ? '/my-listings' : '/'}>Clear search</Link>
+              <Link href={browserList ? '/my-listings' : '/'}>Clear search</Link>
             </Button>
           ) : (
             <CreateListingTrigger />
@@ -178,11 +91,11 @@ export function ListingFeed({
         {loading ? (
           <p role="status">Loading listings…</p>
         ) : error ? (
-          <Button variant="outline" onClick={requestMore}>
+          <Button variant="outline" onClick={() => void requestMore()}>
             Try again
           </Button>
         ) : feed.nextPage !== null ? (
-          <Button variant="ghost" onClick={requestMore}>
+          <Button variant="ghost" onClick={() => void requestMore()}>
             Load more
           </Button>
         ) : feed.items.length > 0 ? (

@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { getSupabase } from './supabase';
 import { PAGE_SIZE, type Listing, type ListingPage } from '../marketplace';
 import { identifierSchema } from '../validation';
@@ -15,9 +16,9 @@ export async function browseListings(
     page_size: PAGE_SIZE,
   });
   if (error) throw new Error('Listings could not be loaded.');
-  return data as ListingPage;
+  return data ?? { items: [], count: 0 };
 }
-export async function findListing(identifier: string): Promise<Listing | null> {
+export const findListing = cache(async (identifier: string): Promise<Listing | null> => {
   if (!identifierSchema.safeParse(identifier).success) return null;
   const { data, error } = await getSupabase()
     .from('listings')
@@ -25,8 +26,8 @@ export async function findListing(identifier: string): Promise<Listing | null> {
     .eq('id', identifier)
     .maybeSingle();
   if (error) throw new Error('This listing could not be loaded.');
-  return data as Listing | null;
-}
+  return data;
+});
 
 export async function findBrowserListings(
   identifiers: string[],
@@ -49,7 +50,7 @@ export async function findBrowserListings(
   if (results.some((result) => result.error)) throw new Error('Your listings could not be loaded.');
   const normalizedQuery = query.toLowerCase();
   const matches = results
-    .flatMap((result) => (result.data ?? []) as Listing[])
+    .flatMap((result) => result.data ?? [])
     .filter(
       (listing) =>
         (!category || listing.category === category) &&

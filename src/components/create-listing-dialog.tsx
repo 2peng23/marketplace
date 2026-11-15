@@ -25,7 +25,8 @@ export function ListingDialogProvider({ children }: { children: ReactNode }) {
   return (
     <ListingDialogContext.Provider
       value={() => {
-        triggerReference.current = document.activeElement as HTMLElement;
+        triggerReference.current =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null;
         setOpen(true);
       }}
     >
@@ -52,6 +53,7 @@ export function ListingDialogProvider({ children }: { children: ReactNode }) {
             <DialogTitle>Create listing</DialogTitle>
           </DialogHeader>
           <CreateListingForm
+            submitting={submitting}
             onCancel={() => changeOpen(false)}
             onSubmittingChange={setSubmitting}
             onSuccess={(identifier) => {
@@ -76,7 +78,7 @@ export function CreateListingTrigger({
 }) {
   const openDialog = useContext(ListingDialogContext);
   return (
-    <Button className={className} onClick={() => openDialog?.()}>
+    <Button type="button" className={className} onClick={() => openDialog?.()}>
       {children}
     </Button>
   );

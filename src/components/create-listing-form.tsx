@@ -3,7 +3,8 @@ import Image from 'next/image';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { categories, MAX_IMAGE_BYTES } from '@/lib/marketplace';
 import { rememberCreatedListing } from '@/lib/created-listings';
-import { listingSchema, validationFields } from '@/lib/validation';
+import { listingCreatedSchema, listingSchema, validationFields } from '@/lib/validation';
+import { ApiError, requestJson } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,28 +17,28 @@ export function CreateListingForm({
   onCancel,
   onSuccess,
   onSubmittingChange,
+  submitting,
 }: {
   onCancel: () => void;
   onSuccess: (identifier: string) => void;
   onSubmittingChange: (submitting: boolean) => void;
+  submitting: boolean;
 }) {
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
   const [fields, setFields] = useState<FieldErrors>({});
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const requestIdentifier = useRef('');
-  const previewReference = useRef('');
+  const requestIdentifier = useRef({ id: '', contents: '' });
   const fileReference = useRef<HTMLInputElement>(null);
   useEffect(
     () => () => {
-      if (previewReference.current) URL.revokeObjectURL(previewReference.current);
+      if (preview) URL.revokeObjectURL(preview);
     },
-    [],
+    [preview],
   );
+
   function choosePhoto(file: File | null) {
-    if (previewReference.current) URL.revokeObjectURL(previewReference.current);
-    previewReference.current = '';
+    requestIdentifier.current = { id: '', contents: '' };
     setPreview('');
     setPhoto(null);
     if (!file) return;
@@ -50,7 +51,6 @@ export function CreateListingForm({
       return;
     }
     const objectUrl = URL.createObjectURL(file);
-    previewReference.current = objectUrl;
     setPreview(objectUrl);
     setPhoto(file);
     setFields((previous) => {
@@ -64,31 +64,37 @@ export function CreateListingForm({
     if (submitting) return;
     setError('');
     const form = new FormData(event.currentTarget);
-    if (!requestIdentifier.current) requestIdentifier.current = crypto.randomUUID();
-    form.set('requestId', requestIdentifier.current);
+    form.set('requestId', requestIdentifier.current.id || crypto.randomUUID());
     const result = listingSchema.safeParse(Object.fromEntries(form));
     const nextFields: FieldErrors = result.success ? {} : validationFields(result.error);
     if (!photo) nextFields.photo = 'Choose a product photo.';
     setFields(nextFields);
-    if (Object.keys(nextFields).length) {
+    if (!result.success || !photo) {
       document.getElementById(Object.keys(nextFields)[0])?.focus();
       return;
     }
-    form.set('photo', photo!);
-    setSubmitting(true);
+    const contents = JSON.stringify([
+      result.data.title,
+      result.data.description,
+      result.data.price,
+      result.data.category,
+      result.data.sellerEmail,
+    ]);
+    if (!requestIdentifier.current.id || requestIdentifier.current.contents !== contents)
+      requestIdentifier.current = { id: crypto.randomUUID(), contents };
+    form.set('requestId', requestIdentifier.current.id);
+    form.set('photo', photo);
     onSubmittingChange(true);
     try {
-      const response = await fetch('/api/listings', { method: 'POST', body: form });
-      const payload = await response.json();
-      if (!response.ok) {
-        setFields(payload.fields ?? {});
-        throw new Error(payload.error ?? 'Your listing could not be saved. Please try again.');
-      }
+      const payload = await requestJson('/api/listings', listingCreatedSchema, {
+        method: 'POST',
+        body: form,
+      });
       rememberCreatedListing(payload.id);
       onSuccess(payload.id);
     } catch (failure) {
+      if (failure instanceof ApiError) setFields(failure.fields);
       setError(failure instanceof Error ? failure.message : 'Please try again.');
-      setSubmitting(false);
       onSubmittingChange(false);
     }
   }

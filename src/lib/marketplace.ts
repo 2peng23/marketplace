@@ -28,6 +28,7 @@ export type ListingFeedPage = {
 };
 export const PAGE_SIZE = 12;
 export const MAX_IMAGE_BYTES = 4_000_000;
+export const MAX_SAVED_LISTINGS = 1000;
 export const categoryName = (category: string) =>
   categories.find((option) => option.slug === category)?.label ?? 'Other';
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -42,10 +43,37 @@ export const formatPrice = (price: number) =>
     : Number.isInteger(Number(price))
       ? currencyFormatter.format(Number(price)).replace(/\.00$/, '')
       : currencyFormatter.format(Number(price));
-export function browseUrl(parameters: { category?: string; query?: string; page?: number }) {
+export function browseUrl(parameters: {
+  category?: string;
+  query?: string;
+  path?: '/' | '/my-listings';
+}) {
   const search = new URLSearchParams();
   if (parameters.category) search.set('category', parameters.category);
   if (parameters.query) search.set('q', parameters.query);
-  if (parameters.page && parameters.page > 1) search.set('page', String(parameters.page));
-  return search.size ? `/?${search.toString()}` : '/';
+  const path = parameters.path ?? '/';
+  return search.size ? `${path}?${search.toString()}` : path;
+}
+
+export function browseFilters(parameters: Record<string, string | string[] | undefined>) {
+  const query = typeof parameters.q === 'string' ? parameters.q.trim().slice(0, 100) : '';
+  const category = categories.some((option) => option.slug === parameters.category)
+    ? String(parameters.category)
+    : '';
+  return { query, category };
+}
+
+export function browseReturnUrl(value: unknown) {
+  if (typeof value !== 'string' || !value.startsWith('/')) return '/';
+  try {
+    const destination = new URL(value, 'https://marketplace.invalid');
+    if (
+      destination.origin !== 'https://marketplace.invalid' ||
+      !['/', '/my-listings'].includes(destination.pathname)
+    )
+      return '/';
+    return destination.pathname + destination.search;
+  } catch {
+    return '/';
+  }
 }

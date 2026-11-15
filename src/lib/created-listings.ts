@@ -1,3 +1,4 @@
+import { MAX_SAVED_LISTINGS } from '@/lib/marketplace';
 import { identifierSchema } from '@/lib/validation';
 
 export const CREATED_LISTINGS_STORAGE_KEY = 'marketplace.created-listings';
@@ -11,7 +12,7 @@ export function parseCreatedListingIds(snapshot: string) {
       ...new Set(
         values.filter((value): value is string => identifierSchema.safeParse(value).success),
       ),
-    ].slice(0, 1000);
+    ].slice(0, MAX_SAVED_LISTINGS);
   } catch {
     return [];
   }
@@ -44,7 +45,10 @@ export function rememberCreatedListing(identifier: string) {
       identifier,
       ...parseCreatedListingIds(createdListingsSnapshot()).filter((value) => value !== identifier),
     ];
-    localStorage.setItem(CREATED_LISTINGS_STORAGE_KEY, JSON.stringify(identifiers.slice(0, 1000)));
+    localStorage.setItem(
+      CREATED_LISTINGS_STORAGE_KEY,
+      JSON.stringify(identifiers.slice(0, MAX_SAVED_LISTINGS)),
+    );
     window.dispatchEvent(new Event(changeEvent));
   } catch {
     /* A successful listing stays published when browser storage is unavailable. */

@@ -59,7 +59,7 @@ test('anonymous create → persisted detail → browse/search → private messag
     await page.goto('/');
     await page.locator('.sidebar-create').click();
     await expect(page.getByRole('dialog', { name: 'Create listing' })).toBeVisible();
-    await page.getByLabel('Product photo').setInputFiles('public/icon-512.png');
+    await page.getByLabel('Product photo').setInputFiles('tests/fixtures/listing.png');
     await page.getByLabel('Title', { exact: true }).fill(title);
     await page.getByLabel('Price', { exact: false }).fill('24.50');
     await page.getByLabel('Category', { exact: true }).selectOption('home-garden');
@@ -125,7 +125,7 @@ test('API enforces image validation, recipient integrity and idempotent persiste
   request,
 }) => {
   const identifier = randomUUID();
-  const png = await readFile('public/icon-512.png');
+  const png = await readFile('tests/fixtures/listing.png');
   const nearLimit = Buffer.concat([png, Buffer.alloc(3_950_000 - png.length)]);
   const fields = {
     requestId: identifier,
@@ -157,6 +157,24 @@ test('API enforces image validation, recipient integrity and idempotent persiste
       },
     });
     expect(retry.status()).toBe(200);
+    const changedRequest = await request.post('/api/listings', {
+      multipart: {
+        ...fields,
+        title: 'Different item with the same request ID',
+        photo: { name: 'photo.png', mimeType: 'image/png', buffer: png },
+      },
+    });
+    expect(changedRequest.status()).toBe(409);
+    const preserved = await database
+      .from('listings')
+      .select('title,image_path')
+      .eq('id', identifier)
+      .single();
+    expect(preserved.data!.title).toBe(fields.title);
+    expect(
+      (await database.storage.from('listing-images').download(preserved.data!.image_path)).error,
+    ).toBeNull();
+
     expect((await database.from('listings').select('id').eq('id', identifier)).data).toHaveLength(
       1,
     );
@@ -313,10 +331,8 @@ test('infinite feed loads twelve per batch, retries failure, and resets filters'
   expect(new Set(destinations).size).toBe(36);
   await page.unroute('**/api/listings?**');
   await page.getByRole('link', { name: 'Electronics', exact: true }).click();
-  await expect(page.locator('.listing-card')).toHaveCount(
-    initialFeed.items.filter((item: { category: string }) => item.category === 'electronics')
-      .length,
-  );
+  const electronics = await (await request.get('/api/listings?category=electronics')).json();
+  await expect(page.locator('.listing-card')).toHaveCount(electronics.items.length);
   await page.getByRole('searchbox', { name: 'Search listings' }).fill('unfindable-' + randomUUID());
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'No items found' })).toBeVisible();

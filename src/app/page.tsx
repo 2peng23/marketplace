@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { browseListings } from '@/lib/server/listings';
 import { serializeListingFeed } from '@/lib/server/listing-feed';
-import { browseUrl, categories, categoryName } from '@/lib/marketplace';
+import { browseUrl, browseFilters, categoryName } from '@/lib/marketplace';
 import { SearchForm } from '@/components/search-form';
 import { MarketplaceSidebar } from '@/components/marketplace-sidebar';
 import { ListingFeed } from '@/components/listing-feed';
@@ -14,10 +14,7 @@ export default async function MarketplacePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const parameters = await searchParams;
-  const query = typeof parameters.q === 'string' ? parameters.q.trim().slice(0, 100) : '';
-  const category = categories.some((option) => option.slug === parameters.category)
-    ? String(parameters.category)
-    : '';
+  const { query, category } = browseFilters(parameters);
   const listings = await browseListings(category, query, 1);
   const returnTo = browseUrl({ category, query });
   return (

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { findListing } from '@/lib/server/listings';
 import { imageUrl } from '@/lib/server/supabase';
-import { categoryName, formatPrice } from '@/lib/marketplace';
+import { browseReturnUrl, categoryName, formatPrice } from '@/lib/marketplace';
 import { MessageSeller } from '@/components/message-seller';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -26,11 +26,7 @@ export default async function ListingDetailPage({ params, searchParams }: PagePr
   const listing = await findListing((await params).id);
   if (!listing) notFound();
   const parameters = await searchParams;
-  const from =
-    typeof parameters.from === 'string' &&
-    (parameters.from.startsWith('/?') || parameters.from === '/my-listings')
-      ? parameters.from
-      : '/';
+  const from = browseReturnUrl(parameters.from);
   return (
     <main id="main-content" className="page-container detail-main">
       <Button variant="link" asChild className="back-link">

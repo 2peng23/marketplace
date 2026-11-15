@@ -21,8 +21,6 @@ export default defineConfig({
       SMTP_PASSWORD: 'test',
       SMTP_FROM: 'marketplace@example.test',
       SMTP_SECURE: 'false',
-      SMTP_ALLOW_INSECURE_LOCAL: 'true',
-      MARKETPLACE_SMTP_TEST: 'true',
       NEXT_PUBLIC_SITE_URL: 'http://127.0.0.1:3002',
     },
   },

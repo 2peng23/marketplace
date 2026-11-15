@@ -1,3 +1,4 @@
+import { browseFilters } from '@/lib/marketplace';
 import { MarketplaceSidebar } from '@/components/marketplace-sidebar';
 import { SearchForm } from '@/components/search-form';
 import { MyListingsFeed } from '@/components/listing-feed';
@@ -9,7 +10,7 @@ export default async function MyListingsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const parameters = await searchParams;
-  const query = typeof parameters.q === 'string' ? parameters.q.trim().slice(0, 100) : '';
+  const { query } = browseFilters(parameters);
   return (
     <main id="main-content" className="marketplace-main page-container">
       <MarketplaceSidebar ownListings />
