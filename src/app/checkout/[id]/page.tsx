@@ -5,6 +5,8 @@ import { findBuyerOrder, publicOrder, buyerCheckoutIsOpen } from '@/lib/server/c
 import { RequestError } from '@/lib/server/errors';
 import { OrderStatus } from '@/components/order-status';
 import type { OrderRow } from '@/lib/server/database.types';
+import { findListing } from '@/lib/server/listings';
+import { imageUrl } from '@/lib/server/supabase';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Your order', robots: { index: false, follow: false } };
@@ -34,9 +36,15 @@ export default async function CheckoutPage({
       </main>
     );
   const paused = (await searchParams).cancelled === '1' || (await buyerCheckoutIsOpen(order));
+  // An unavailable item photo must not hide a confirmed order.
+  const listing = await findListing(order.listing_id).catch(() => null);
   return (
     <main id="main-content" className="page-container checkout-page">
-      <OrderStatus initialOrder={publicOrder(order)} initiallyPaused={paused} />
+      <OrderStatus
+        initialOrder={publicOrder(order)}
+        initiallyPaused={paused}
+        listingImageUrl={listing ? imageUrl(listing.image_path) : null}
+      />
     </main>
   );
 }

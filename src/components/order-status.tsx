@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { requestJson } from '@/lib/api';
 import { publicOrderSchema, stripeLinkSchema, type PublicOrder } from '@/lib/payments';
 import { formatPrice } from '@/lib/marketplace';
@@ -10,9 +11,11 @@ import { Button } from '@/components/ui/button';
 export function OrderStatus({
   initialOrder,
   initiallyPaused,
+  listingImageUrl,
 }: {
   initialOrder: PublicOrder;
   initiallyPaused: boolean;
+  listingImageUrl: string | null;
 }) {
   const [order, setOrder] = useState(initialOrder);
   const [error, setError] = useState('');
@@ -83,7 +86,11 @@ export function OrderStatus({
           ? 'Checkout paused'
           : 'Confirming your payment';
   return (
-    <section className="payment-panel order-confirmation" aria-labelledby="order-title">
+    <section
+      className="payment-panel order-confirmation"
+      aria-labelledby="order-title"
+      data-status={order.status}
+    >
       <span className="sandbox-label">Sandbox</span>
       <h1 id="order-title" aria-live="polite">
         {title}
@@ -97,12 +104,19 @@ export function OrderStatus({
               ? 'Resume your checkout or cancel it to release the item.'
               : 'We’re waiting for Stripe’s payment confirmation. Your order will update here.'}
       </p>
-      <dl className="order-details">
-        <div>
-          <dt>Item</dt>
-          <dd>{order.title}</dd>
+      <div className="order-item">
+        {listingImageUrl && (
+          <div className="order-item-photo">
+            <Image src={listingImageUrl} alt={order.title} fill sizes="96px" />
+          </div>
+        )}
+        <div className="order-item-description">
+          <p className="payment-eyebrow">Your item</p>
+          <h2>{order.title}</h2>
         </div>
-        <div>
+      </div>
+      <dl className="order-details">
+        <div className="order-total">
           <dt>Total</dt>
           <dd>{formatPrice(order.amountCents / 100)} USD</dd>
         </div>

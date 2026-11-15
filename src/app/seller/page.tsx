@@ -35,15 +35,50 @@ export default async function SellerPage({
     }
   }
   const listings = seller ? await sellerListings(seller) : [];
+  const setupStep = !seller
+    ? 0
+    : seller.stripe_payment_status !== 'active'
+      ? 1
+      : listings.some((listing) => listing.owned)
+        ? 3
+        : 2;
   return (
     <main id="main-content" className="page-container payment-page">
       <Link className="payment-back-link" href="/my-listings">
         Back to My listings
       </Link>
       <header className="payment-page-heading">
-        <h1>Seller payments</h1>
-        <p>Connect Stripe to sell items directly from Marketplace.</p>
+        <div>
+          <h1>Seller payments</h1>
+          <p>Set up card payments and manage the listings you sell online.</p>
+        </div>
+        <span className="sandbox-label">Sandbox</span>
       </header>
+      {stripeConfigured() && (
+        <ol className="seller-setup-progress" aria-label="Seller payment setup">
+          {['Verify email', 'Connect Stripe', 'Link listings'].map((step, index) => (
+            <li
+              key={step}
+              className={
+                index < setupStep ? 'is-complete' : index === setupStep ? 'is-current' : ''
+              }
+              aria-current={index === setupStep ? 'step' : undefined}
+            >
+              <span className="setup-step-number" aria-hidden="true">
+                {index + 1}
+              </span>
+              <span>{step}</span>
+              <span className="sr-only">
+                {index < setupStep
+                  ? 'Completed'
+                  : index === setupStep
+                    ? 'Current step'
+                    : 'Not started'}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
       {!stripeConfigured() ? (
         <section className="payment-panel">
           <h2>Payments are being connected</h2>

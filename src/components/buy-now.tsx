@@ -55,7 +55,7 @@ export function BuyNow({
           <Button className="buy-now-button" onClick={() => void purchaseItem()} disabled={pending}>
             {pending ? 'Opening checkout…' : 'Buy Now'}
           </Button>
-          <p className="field-help">Opens Stripe Checkout · Sandbox</p>
+          <p className="field-help">Stripe test checkout · No real money moves</p>
         </>
       ) : (
         <p className="field-help">Contact the seller to arrange this purchase.</p>

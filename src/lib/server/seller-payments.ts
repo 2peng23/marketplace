@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SellerSummary } from '@/lib/payments';
 import type { SellerRow } from './database.types';
-import { getSupabase } from './supabase';
+import { getSupabase, imageUrl } from './supabase';
 import {
   getStripe,
   applicationOrigin,
@@ -124,7 +124,7 @@ export async function sellerDashboard(seller: SellerRow) {
 export async function sellerListings(seller: SellerRow) {
   const { data, error } = await getSupabase()
     .from('listings')
-    .select('id,title,price,seller_id,sale_status')
+    .select('id,title,price,image_path,seller_id,sale_status')
     .eq('seller_email', seller.email)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -133,6 +133,7 @@ export async function sellerListings(seller: SellerRow) {
     id: listing.id,
     title: listing.title,
     price: listing.price,
+    imageUrl: imageUrl(listing.image_path),
     owned: listing.seller_id === seller.id,
     sold: listing.sale_status === 'sold',
   }));

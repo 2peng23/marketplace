@@ -364,6 +364,7 @@ test('seller email verification protects listing ownership and financial actions
     await page.getByLabel('Seller email', { exact: true }).fill(email);
     await page.getByRole('button', { name: 'Send verification code', exact: true }).click();
     await expect(page.getByLabel('Verification code', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Verification code', { exact: true })).toBeFocused();
     await expect
       .poll(
         () =>

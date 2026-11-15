@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { requestJson } from '@/lib/api';
 import {
@@ -14,7 +15,14 @@ import { formatPrice } from '@/lib/marketplace';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
-type SellerListing = { id: string; title: string; price: number; owned: boolean; sold: boolean };
+type SellerListing = {
+  id: string;
+  title: string;
+  price: number;
+  imageUrl: string;
+  owned: boolean;
+  sold: boolean;
+};
 export function SellerPayments({
   seller,
   listings,
@@ -58,6 +66,7 @@ export function SellerPayments({
   return (
     <div className="seller-payments-layout">
       <section className="payment-panel" aria-labelledby="stripe-setup-title">
+        <p className="payment-eyebrow">Payment account</p>
         <div className="seller-panel-heading">
           <h2 id="stripe-setup-title">
             {ready
@@ -68,7 +77,6 @@ export function SellerPayments({
                 ? 'Finish seller setup'
                 : 'Connect with Stripe'}
           </h2>
-          <span className="sandbox-label">Sandbox</span>
         </div>
         <p className="seller-verified-email">{seller.email}</p>
         <p>
@@ -78,10 +86,17 @@ export function SellerPayments({
               : 'Your Stripe account is ready. Marketplace is finishing payment setup.'
             : 'Complete Stripe’s hosted setup to accept payments for your listings.'}
         </p>
-        <p className="payment-fee-note">
-          Marketplace keeps a 10% platform fee. Stripe processing fees apply separately. No real
-          money moves in this sandbox.
-        </p>
+        <dl className="seller-policy-details">
+          <div>
+            <dt>Marketplace fee</dt>
+            <dd>10% per sale</dd>
+          </div>
+          <div>
+            <dt>Stripe processing</dt>
+            <dd>Charged separately</dd>
+          </div>
+        </dl>
+        <p className="field-help">Test payments only. No real money moves.</p>
         {expiredLink && (
           <p role="status" className="payment-notice">
             Your setup link expired. Continue below to open a new one.
@@ -113,41 +128,48 @@ export function SellerPayments({
         <div className="payment-actions">
           <Button
             disabled={Boolean(pending) || (!seller.connected && !country)}
-            onClick={() => void runAction('onboard', () => stripeAction('onboard'))}
+            onClick={() =>
+              void runAction(ready ? 'dashboard' : 'onboard', () =>
+                stripeAction(ready ? 'dashboard' : 'onboard'),
+              )
+            }
           >
-            {pending === 'onboard'
+            {pending === 'onboard' || pending === 'dashboard'
               ? 'Opening Stripe…'
               : ready
-                ? 'Update Stripe details'
+                ? 'Open Stripe dashboard'
                 : seller.connected
                   ? 'Continue setup'
                   : 'Connect with Stripe'}
           </Button>
           {seller.connected && (
             <>
-              <Button
-                variant="outline"
-                disabled={Boolean(pending)}
-                onClick={() =>
-                  void runAction('refresh', async () => {
-                    await requestJson('/api/seller/stripe', sellerSummarySchema, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'refresh' }),
-                    });
-                    router.refresh();
-                  })
-                }
-              >
-                {pending === 'refresh' ? 'Checking…' : 'Check status'}
-              </Button>
-              <Button
-                variant="link"
-                disabled={Boolean(pending)}
-                onClick={() => void runAction('dashboard', () => stripeAction('dashboard'))}
-              >
-                Open Stripe dashboard
-              </Button>
+              {ready ? (
+                <Button
+                  variant="outline"
+                  disabled={Boolean(pending)}
+                  onClick={() => void runAction('onboard', () => stripeAction('onboard'))}
+                >
+                  Update details
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  disabled={Boolean(pending)}
+                  onClick={() =>
+                    void runAction('refresh', async () => {
+                      await requestJson('/api/seller/stripe', sellerSummarySchema, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'refresh' }),
+                      });
+                      router.refresh();
+                    })
+                  }
+                >
+                  {pending === 'refresh' ? 'Checking…' : 'Check status'}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -171,20 +193,33 @@ export function SellerPayments({
         </Button>
       </section>
       <section className="payment-panel" aria-labelledby="seller-items-title">
-        <h2 id="seller-items-title">Your listings</h2>
-        <p>
-          Link the listings you want to sell online. Your verified email must match the listing.
-        </p>
+        <div className="seller-panel-heading">
+          <h2 id="seller-items-title">Your listings</h2>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/create">Create listing</Link>
+          </Button>
+        </div>
+        <p>Link an item to enable its Buy Now button once payments are ready.</p>
         {listings.length ? (
           <ul className="seller-listings">
             {listings.map((listing) => (
               <li key={listing.id}>
-                <div>
-                  <Link href={`/listings/${listing.id}`}>{listing.title}</Link>
-                  <span>{formatPrice(listing.price)}</span>
+                <div className="seller-listing-summary">
+                  <Link
+                    href={`/listings/${listing.id}`}
+                    className="seller-listing-photo"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  >
+                    <Image src={listing.imageUrl} alt="" fill sizes="64px" />
+                  </Link>
+                  <div className="seller-listing-description">
+                    <Link href={`/listings/${listing.id}`}>{listing.title}</Link>
+                    <span>{formatPrice(listing.price)}</span>
+                  </div>
                 </div>
                 {listing.sold ? (
-                  <span className="seller-listing-state">Sold</span>
+                  <span className="seller-listing-state is-sold">Sold</span>
                 ) : listing.owned ? (
                   <span className="seller-listing-state">Linked</span>
                 ) : (
@@ -212,9 +247,6 @@ export function SellerPayments({
         ) : (
           <p className="seller-empty">Create a listing with this email to sell your first item.</p>
         )}
-        <Button asChild variant="outline">
-          <Link href="/create">Create listing</Link>
-        </Button>
       </section>
     </div>
   );
