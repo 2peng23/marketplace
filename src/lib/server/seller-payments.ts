@@ -1,4 +1,5 @@
 import 'server-only';
+import Stripe from 'stripe';
 import type { SellerSummary } from '@/lib/payments';
 import type { SellerRow } from './database.types';
 import { getSupabase, imageUrl } from './supabase';
@@ -72,21 +73,45 @@ export async function startSellerOnboarding(seller: SellerRow, country: string) 
     if (stored.error) throw new RequestError('Seller setup could not be saved.', 503);
     seller = stored.data;
     if (!seller.stripe_account_id) {
-      const account = await stripe.v2.core.accounts.create(
-        {
-          contact_email: seller.email,
-          display_name: 'Marketplace seller',
-          dashboard: 'express',
-          identity: { country: seller.stripe_country! },
-          defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } },
-          configuration: { merchant: { capabilities: { card_payments: { requested: true } } } },
-          metadata: { application: STRIPE_APPLICATION, seller_id: seller.id },
-        },
-        {
-          apiVersion: STRIPE_CONNECT_API_VERSION,
-          idempotencyKey: `${STRIPE_APPLICATION}:managed-risk-express:${seller.id}:${seller.stripe_country}`,
-        },
-      );
+      const account = await stripe.v2.core.accounts
+        .create(
+          {
+            contact_email: seller.email,
+            display_name: 'Marketplace seller',
+            dashboard: 'express',
+            identity: { country: seller.stripe_country! },
+            defaults: {
+              responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' },
+            },
+            configuration: { merchant: { capabilities: { card_payments: { requested: true } } } },
+            metadata: { application: STRIPE_APPLICATION, seller_id: seller.id },
+          },
+          {
+            apiVersion: STRIPE_CONNECT_API_VERSION,
+            idempotencyKey: `${STRIPE_APPLICATION}:managed-risk-express:${seller.id}:${seller.stripe_country}`,
+          },
+        )
+        .catch(async (error: unknown) => {
+          // A definitive rejection created no account. Let the seller correct the
+          // country; keep it frozen after uncertain failures to recover idempotently.
+          if (
+            error instanceof Stripe.errors.StripeInvalidRequestError &&
+            error.code !== 'idempotency_key_in_use'
+          ) {
+            const cleared = await getSupabase()
+              .from('sellers')
+              .update({ stripe_country: null })
+              .eq('id', seller.id)
+              .eq('stripe_country', seller.stripe_country!)
+              .is('stripe_account_id', null);
+            if (!cleared.error)
+              throw new RequestError(
+                'Stripe rejected these account details. Check your test country and try again.',
+                400,
+              );
+          }
+          throw error;
+        });
       const saved = await getSupabase()
         .from('sellers')
         .update({
