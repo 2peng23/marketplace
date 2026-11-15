@@ -43,7 +43,7 @@ The optional `npm run db:setup` command applies all migrations through the Supab
 
 The app uses local component state and one dialog context. Supabase Auth verifies seller emails; there is no password or general account-registration screen. Database, SMTP, and Stripe modules remain server-only.
 
-Payment code has four focused responsibilities: `seller-session.ts` verifies email and sessions, `seller-payments.ts` manages connected accounts, `checkout.ts` coordinates orders and reservations, and `stripe-events.ts` verifies and commits provider events. `payments.ts` holds shared contracts and exact money calculations.
+Payment code has four focused responsibilities: `seller-context.ts` remembers the email-selected seller in a signed cookie, `seller-payments.ts` manages connected accounts, `checkout.ts` coordinates orders and reservations, and `stripe-events.ts` verifies and commits provider events. `payments.ts` holds shared contracts and exact money calculations.
 
 ## Stripe Connect sandbox
 
