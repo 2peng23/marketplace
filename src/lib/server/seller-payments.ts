@@ -54,13 +54,20 @@ export async function sellerCountryOptions() {
 }
 
 export async function startSellerOnboarding(seller: SellerRow, country: string) {
+  const origin = applicationOrigin();
+  if (!origin.startsWith('https://'))
+    throw new RequestError('Stripe onboarding needs the secure deployed Marketplace URL.', 409);
   const stripe = getStripe();
   if (!seller.stripe_account_id) {
-    await getSupabase()
+    const options = await sellerCountryOptions();
+    if (!options.countries.some((option) => option.code === country))
+      throw new RequestError('Choose a supported country for Stripe test onboarding.', 400);
+    const countryUpdate = await getSupabase()
       .from('sellers')
       .update({ stripe_country: country })
       .eq('id', seller.id)
       .is('stripe_country', null);
+    if (countryUpdate.error) throw new RequestError('Seller country could not be saved.', 503);
     const stored = await getSupabase().from('sellers').select('*').eq('id', seller.id).single();
     if (stored.error) throw new RequestError('Seller setup could not be saved.', 503);
     seller = stored.data;
@@ -98,9 +105,6 @@ export async function startSellerOnboarding(seller: SellerRow, country: string) 
       seller = saved.data;
     }
   }
-  const origin = applicationOrigin();
-  if (!origin.startsWith('https://'))
-    throw new RequestError('Stripe onboarding needs the secure deployed Marketplace URL.', 409);
   const link = await stripe.v2.core.accountLinks.create({
     account: seller.stripe_account_id!,
     use_case: {
@@ -135,7 +139,7 @@ export async function sellerListings(seller: SellerRow) {
     price: listing.price,
     imageUrl: imageUrl(listing.image_path),
     owned: listing.seller_id === seller.id,
-    sold: listing.sale_status === 'sold',
+    saleStatus: listing.sale_status,
   }));
 }
 

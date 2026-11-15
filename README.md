@@ -1,6 +1,6 @@
 # Marketplace
 
-A marketplace built with Next.js, React, Supabase, and shadcn/ui. Browsing, posting, messaging, and sandbox checkout need no account. Sellers verify their listing email before configuring Stripe payments.
+A marketplace built with Next.js, React, Supabase, and shadcn/ui. Browsing, posting, messaging, and sandbox checkout need no account. Sellers enter their listing email to configure Stripe payments; no login or email code is needed.
 
 ## Run locally
 
@@ -49,7 +49,7 @@ Payment code has four focused responsibilities: `seller-session.ts` verifies ema
 
 This extends Test 3 with seller onboarding, one-item Stripe Checkout, a 10% platform fee, webhook-confirmed orders, and Sold listings. Use the supplied sandbox; live keys and live events are rejected.
 
-1. Apply `003_stripe_connect.sql` after the earlier migrations. It adds private sellers, orders, and webhook receipts, along with transactional reservation and confirmation functions. Existing data is retained.
+1. Apply `003_stripe_connect.sql` after the earlier migrations. It adds private sellers, orders, and webhook receipts, along with transactional reservation and confirmation functions. Existing data is retained. Apply `20261115120948_email_based_sellers.sql` afterward to enable email-only seller setup and automatic listing matching.
 2. Run `npm run stripe:setup` to enter the supplied secret in a loopback-only masked form. It verifies test mode and saves `.env.local` with owner-only permissions. Set the supplied `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` there too; hosted redirects currently do not need a browser Stripe SDK.
 3. Set `APP_URL` to the canonical public HTTPS origin. Set the Stripe variables and existing SMTP/Supabase variables in Vercel, then deploy the webhook route.
 4. Run `npm run stripe:webhook` locally. This creates a **Connect** endpoint at `/api/stripe/webhook` and saves its signing secret and endpoint ID in `.env.local` without printing the secret. Copy `STRIPE_WEBHOOK_SECRET` securely into Vercel and redeploy. Checkout stays disabled until a signing secret is configured.
@@ -58,7 +58,7 @@ The endpoint listens for Checkout completion/expiration and `account.updated`. I
 
 The integration uses Stripe SDK 23.1.0, Accounts v2, hosted onboarding, and **direct charges on the seller's connected account**. The supplied platform requires Stripe-managed risk. Express account creation uses Stripe's documented `2026-10-28.preview` version for that combination; other requests use stable API `2026-10-28.endive`. This preview dependency is isolated to account creation. Stripe collects processing fees separately from our 10% application fee. There is no promise of an immediate bank payout. The Connect snapshot endpoint also receives v1-compatible account updates from v2 accounts; readiness is retrieved through the v2 merchant card-payments capability.
 
-Seller verification uses Supabase-generated email OTPs delivered through the existing Gmail SMTP transport. Codes and session tokens are never returned in JSON or logged. A server-validated, HttpOnly seller session lasts up to one hour. An explicit Link listing action verifies that the stored seller email matches the verified identity and atomically binds ownership. Browser-local listing IDs do not authorize payments. New listings posted by that verified seller are linked automatically when their emails match.
+Seller identity follows the hiring brief: entering an email selects that seller without login, an OTP, or proof of email ownership. A signed, HttpOnly cookie remembers the selection for one hour. Existing and future listings with the normalized email match automatically through service-only database functions and an insert trigger, including concurrent listing/setup requests. Seller IDs and connected accounts are preserved when migrating from the earlier verified-email flow. This email-only identity model is intentional for the test environment; real-money use would require verified identity and authorization. Live Stripe keys and live webhook events are rejected.
 
 Prices remain USD. Database reservations snapshot integer cents and round a half-cent platform fee upward. Free listings, prices under $0.50, and amounts exceeding Stripe's supported eight-digit cent range remain contact-only. Hosted Checkout is restricted to cards.
 
@@ -66,7 +66,7 @@ Only one creating, pending, or paid order can exist per listing. Reservations an
 
 The webhook requires the original body and a valid signature, checks the connected-account scope, amount, currency, application fee, and payment status, then records the event, confirms the order, and marks Sold in one transaction. Duplicate or late expiration events cannot undo a paid order. The confirmation page waits for this database state and is accessible only to the originating buyer browser through an HttpOnly capability cookie.
 
-Test the deployed flow with a verified seller email, supported Stripe test identity/bank details, and card `4242 4242 4242 4242` with a future expiry and test CVC. Also check a declined card and an authentication challenge. Confirm the application fee on the connected charge, the private Supabase order, and Sold state. The app does not add shipping, taxes, subscriptions, or a refund dashboard.
+Test the deployed flow with the email on a seller’s listing, supported Stripe test identity/bank details, and card `4242 4242 4242 4242` with a future expiry and test CVC. Also check a declined card and an authentication challenge. Confirm the application fee on the connected charge, the private Supabase order, and Sold state. The app does not add shipping, taxes, subscriptions, or a refund dashboard.
 
 ## Behavior and data boundaries
 
@@ -106,7 +106,7 @@ The browser suite builds the production app, starts it on port 3002, and uses a 
 
 The local Playwright configuration uses Google Chrome at its standard macOS path. Adjust `launchOptions.executablePath` for another platform. Unit tests run with React’s server condition so server-only HTTP helpers can be tested directly.
 
-The opt-in payment database check exercises simultaneous reservations, cross-seller claim rejection, duplicate confirmations, transaction rollback, late expiry, and anonymous access against Postgres. It creates and removes identifiable temporary records; use a dedicated test project when available. Browser checks capture verification emails locally, validate the seller session, claim a listing, and reject unauthenticated financial actions. Provider-hosted onboarding and real sandbox Checkout require a separate end-to-end walkthrough.
+The opt-in payment database check exercises simultaneous reservations, automatic email matching, duplicate confirmations, transaction rollback, late expiry, and anonymous access against Postgres. It creates and removes identifiable temporary records; use a dedicated test project when available. Browser checks exercise email-only seller setup, automatic listing matching, private cookies, and rejection of account/amount tampering. Provider-hosted onboarding and real sandbox Checkout require a separate end-to-end walkthrough.
 
 `npm run build` also runs independently when only production compilation is needed. To add labeled demonstration listings, run `npm run db:seed`; stock image URLs are recorded in `scripts/seed.ts`. To regenerate the favicon and Apple touch icon from `public/icon.svg`, run `node scripts/generate-icons.mjs`.
 

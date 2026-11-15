@@ -27,8 +27,6 @@ export const sellerEmailSchema = z
       .transform((value) => value.trim().toLowerCase()),
   })
   .strict();
-export const sellerCodeSchema = sellerEmailSchema.extend({ code: z.string().regex(/^\d{6,10}$/) });
-export const sellerClaimSchema = z.object({ listingId: identifierSchema }).strict();
 export const sellerConnectSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('onboard'), country: z.string().regex(/^[A-Z]{2}$/) }).strict(),
   z.object({ action: z.literal('refresh') }).strict(),

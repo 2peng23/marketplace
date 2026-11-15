@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sellerConnectSchema } from '@/lib/payments';
-import { requireSeller } from '@/lib/server/seller-session';
+import { requireSeller } from '@/lib/server/seller-context';
 import {
   refreshSellerPayments,
   sellerSummary,

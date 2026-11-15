@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { currentSeller } from '@/lib/server/seller-session';
+import { currentSeller } from '@/lib/server/seller-context';
 import {
   refreshSellerPayments,
   sellerSummary,
@@ -35,13 +35,7 @@ export default async function SellerPage({
     }
   }
   const listings = seller ? await sellerListings(seller) : [];
-  const setupStep = !seller
-    ? 0
-    : seller.stripe_payment_status !== 'active'
-      ? 1
-      : listings.some((listing) => listing.owned)
-        ? 3
-        : 2;
+  const setupStep = !seller ? 0 : seller.stripe_payment_status !== 'active' ? 1 : 2;
   return (
     <main id="main-content" className="page-container payment-page">
       <Link className="payment-back-link" href="/my-listings">
@@ -56,7 +50,7 @@ export default async function SellerPage({
       </header>
       {stripeConfigured() && (
         <ol className="seller-setup-progress" aria-label="Seller payment setup">
-          {['Verify email', 'Connect Stripe', 'Link listings'].map((step, index) => (
+          {['Seller email', 'Connect Stripe'].map((step, index) => (
             <li
               key={step}
               className={

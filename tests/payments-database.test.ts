@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getSupabase } from '../src/lib/server/supabase';
 
 test(
-  'Postgres enforces seller claims, concurrent reservations and idempotent sale confirmation',
+  'Postgres matches email sellers, reserves once and confirms sales idempotently',
   { skip: process.env.RUN_PAYMENT_DATABASE_TESTS !== 'true' },
   async () => {
     nextEnvironment.loadEnvConfig(process.cwd());
@@ -23,16 +23,17 @@ test(
     try {
       for (const suffix of ['owner', 'other']) {
         const email = `${suffix}-${runId}@example.test`;
-        const created = await database.auth.admin.createUser({ email, email_confirm: true });
+        const created = await database.rpc('connect_seller_email', { seller_email: email });
         assert.equal(created.error, null);
-        const identifier = created.data.user!.id;
+        const identifier = created.data!.id;
         userIds.push(identifier);
-        const seller = await database.from('sellers').insert({
-          id: identifier,
-          email,
-          stripe_account_id: `acct_database_${identifier}`,
-          stripe_payment_status: 'active',
-        });
+        const seller = await database
+          .from('sellers')
+          .update({
+            stripe_account_id: `acct_database_${identifier}`,
+            stripe_payment_status: 'active',
+          })
+          .eq('id', identifier);
         assert.equal(seller.error, null);
       }
       const inserted = await database.from('listings').insert({
@@ -45,16 +46,24 @@ test(
         image_path: `${listingId}/photo.webp`,
       });
       assert.equal(inserted.error, null);
-      const forbidden = await database.rpc('claim_listing', {
-        listing_identifier: listingId,
-        seller_identifier: userIds[1],
+      const matched = await database
+        .from('listings')
+        .select('seller_id')
+        .eq('id', listingId)
+        .single();
+      assert.equal(
+        matched.data?.seller_id,
+        userIds[0],
+        'Listings match existing sellers without a browser session',
+      );
+      const repeated = await database.rpc('connect_seller_email', {
+        seller_email: ` OWNER-${runId}@example.test `,
       });
-      assert.equal(forbidden.error?.code, '42501');
-      const claimed = await database.rpc('claim_listing', {
-        listing_identifier: listingId,
-        seller_identifier: userIds[0],
-      });
-      assert.equal(claimed.error, null);
+      assert.equal(
+        repeated.data?.id,
+        userIds[0],
+        'Email normalization preserves the same Stripe seller',
+      );
 
       const requests = ['a'.repeat(64), 'b'.repeat(64)].map((buyerHash) => ({
         listing_identifier: listingId,
@@ -155,9 +164,8 @@ test(
       );
       assert.ok(
         (
-          await anonymous.rpc('claim_listing', {
-            listing_identifier: listingId,
-            seller_identifier: userIds[0],
+          await anonymous.rpc('connect_seller_email', {
+            seller_email: `owner-${runId}@example.test`,
           })
         ).error,
         'Financial mutations cannot be called anonymously',
@@ -168,7 +176,6 @@ test(
       await database.from('orders').delete().eq('listing_id', listingId);
       await database.from('listings').delete().eq('id', listingId);
       if (userIds.length) await database.from('sellers').delete().in('id', userIds);
-      for (const identifier of userIds) await database.auth.admin.deleteUser(identifier);
     }
   },
 );

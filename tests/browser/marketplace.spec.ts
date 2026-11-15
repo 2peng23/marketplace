@@ -338,12 +338,12 @@ test('infinite feed loads twelve per batch, retries failure, and resets filters'
   await expect(page.getByRole('heading', { name: 'No items found' })).toBeVisible();
 });
 
-test('seller email verification protects listing ownership and financial actions', async ({
+test('email-only seller setup matches listings automatically and keeps context private', async ({
   page,
   browser,
   request,
 }) => {
-  const email = `verified-${randomUUID().slice(0, 8)}@example.test`;
+  const email = `seller-${randomUUID().slice(0, 8)}@example.test`;
   const identifier = randomUUID();
   let sellerId = '';
   try {
@@ -351,7 +351,7 @@ test('seller email verification protects listing ownership and financial actions
     const created = await request.post('/api/listings', {
       multipart: {
         requestId: identifier,
-        title: 'Seller verification fixture',
+        title: 'Email matching fixture',
         description: 'Temporary controlled test listing.',
         price: '25',
         category: 'other',
@@ -362,56 +362,30 @@ test('seller email verification protects listing ownership and financial actions
     expect(created.status()).toBe(201);
     await page.goto('/seller');
     await page.getByLabel('Seller email', { exact: true }).fill(email);
-    await page.getByRole('button', { name: 'Send verification code', exact: true }).click();
-    await expect(page.getByLabel('Verification code', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('Verification code', { exact: true })).toBeFocused();
-    await expect
-      .poll(
-        () =>
-          capturedEmails
-            .find((message) => message.recipient === email)
-            ?.body.match(/Your verification code is (\d{6,10})/)?.[1],
-      )
-      .toMatch(/^\d{6,10}$/);
-    const code = capturedEmails
-      .find((message) => message.recipient === email)!
-      .body.match(/Your verification code is (\d{6,10})/)![1];
-    await page.getByLabel('Verification code', { exact: true }).fill('000000');
-    await page.getByRole('button', { name: 'Verify email', exact: true }).click();
-    await expect(page.locator('.seller-access .payment-error')).toContainText(
-      'invalid or has expired',
-    );
-    await page.getByLabel('Verification code', { exact: true }).fill(code);
-    const verifiedResponse = page.waitForResponse(
-      (response) =>
-        response.url().endsWith('/api/seller/session') && response.request().method() === 'POST',
-    );
-    await page.getByRole('button', { name: 'Verify email', exact: true }).click();
-    const response = await verifiedResponse;
-    expect(response.status()).toBe(200);
-    const sellerCookie = (await page.context().cookies()).find(
-      (cookie) => cookie.name === 'marketplace.seller',
-    );
-    expect(sellerCookie, 'Seller access must set a browser session').toBeDefined();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'Connect with Stripe', exact: true }),
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Link listing', exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('Verification code', { exact: true })).toHaveCount(0);
     sellerId = (await database.from('sellers').select('id').eq('email', email).single()).data!.id;
-    await page.getByRole('button', { name: 'Link listing', exact: true }).click();
-    await expect(page.locator('.seller-listing-state')).toHaveText('Linked');
     expect(
       (await database.from('listings').select('seller_id').eq('id', identifier).single()).data!
         .seller_id,
     ).toBe(sellerId);
-    const sessionCookie = (await page.context().cookies()).find(
-      (cookie) => cookie.name === 'marketplace.seller',
+    expect(capturedEmails.some((message) => message.recipient === email)).toBe(false);
+    const cookie = (await page.context().cookies()).find(
+      (value) => value.name === 'marketplace.seller',
     );
-    expect(sessionCookie?.httpOnly).toBe(true);
+    expect(cookie?.httpOnly).toBe(true);
     expect(await page.evaluate(() => document.cookie)).not.toContain('marketplace.seller');
     const fresh = await browser.newContext();
     const denied = await fresh.request.post(
-      `${test.info().project.use.baseURL}/api/seller/listings`,
-      { data: { listingId: identifier }, headers: { Origin: 'http://127.0.0.1:3002' } },
+      `${test.info().project.use.baseURL}/api/seller/stripe`,
+      {
+        data: { action: 'dashboard' },
+        headers: { Origin: 'http://127.0.0.1:3002' },
+      },
     );
     expect(denied.status()).toBe(401);
     await fresh.close();
@@ -426,18 +400,11 @@ test('seller email verification protects listing ownership and financial actions
         await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
       ).toBe(true);
     }
-    await page.getByRole('button', { name: 'Sign out of seller access' }).click();
-    await expect(page.getByRole('heading', { name: 'Verify your seller email' })).toBeVisible();
+    await page.getByRole('button', { name: 'Change email', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Connect your seller email' })).toBeVisible();
   } finally {
     await database.from('listings').delete().eq('id', identifier);
     await database.storage.from('listing-images').remove([`${identifier}/photo.webp`]);
-    if (sellerId) {
-      await database.from('sellers').delete().eq('id', sellerId);
-      await database.auth.admin.deleteUser(sellerId);
-    } else {
-      const users = await database.auth.admin.listUsers({ perPage: 1000 });
-      const unverified = users.data.users.find((user) => user.email === email);
-      if (unverified) await database.auth.admin.deleteUser(unverified.id);
-    }
+    if (sellerId) await database.from('sellers').delete().eq('id', sellerId);
   }
 });

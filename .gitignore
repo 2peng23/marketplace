@@ -22,3 +22,6 @@ renders/
 captures/
 artifacts/
 Marketplace Video/
+
+# Supabase CLI generated state
+supabase/.temp/

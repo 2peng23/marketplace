@@ -21,7 +21,7 @@ type SellerListing = {
   price: number;
   imageUrl: string;
   owned: boolean;
-  sold: boolean;
+  saleStatus: 'available' | 'reserved' | 'sold';
 };
 export function SellerPayments({
   seller,
@@ -79,11 +79,11 @@ export function SellerPayments({
                 : 'Connect with Stripe'}
           </h2>
         </div>
-        <p className="seller-verified-email">{seller.email}</p>
+        <p className="seller-email">{seller.email}</p>
         <p>
           {ready
             ? checkoutAvailable
-              ? 'Your linked listings can accept card payments.'
+              ? 'Listings with this email can accept card payments.'
               : 'Your Stripe account is ready. Marketplace is finishing payment setup.'
             : 'Complete Stripe’s hosted setup to accept payments for your listings.'}
         </p>
@@ -181,16 +181,16 @@ export function SellerPayments({
         )}
         <Button
           variant="link"
-          className="seller-signout"
+          className="seller-change-email"
           disabled={Boolean(pending)}
           onClick={() =>
-            void runAction('signout', async () => {
-              await requestJson('/api/seller/session', actionDoneSchema, { method: 'DELETE' });
+            void runAction('change-email', async () => {
+              await requestJson('/api/seller', actionDoneSchema, { method: 'DELETE' });
               router.refresh();
             })
           }
         >
-          Sign out of seller access
+          Change email
         </Button>
       </section>
       <section className="payment-panel" aria-labelledby="seller-items-title">
@@ -200,7 +200,7 @@ export function SellerPayments({
             <Link href="/create">Create listing</Link>
           </Button>
         </div>
-        <p>Link an item to enable its Buy Now button once payments are ready.</p>
+        <p>Matching listings connect automatically. New listings use this email too.</p>
         {listings.length ? (
           <ul className="seller-listings">
             {listings.map((listing) => (
@@ -219,28 +219,16 @@ export function SellerPayments({
                     <span>{formatPrice(listing.price)}</span>
                   </div>
                 </div>
-                {listing.sold ? (
+                {listing.saleStatus === 'sold' ? (
                   <span className="seller-listing-state is-sold">Sold</span>
-                ) : listing.owned ? (
-                  <span className="seller-listing-state">Linked</span>
+                ) : listing.saleStatus === 'reserved' ? (
+                  <span className="seller-listing-state">In checkout</span>
                 ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={Boolean(pending)}
-                    onClick={() =>
-                      void runAction(listing.id, async () => {
-                        await requestJson('/api/seller/listings', actionDoneSchema, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ listingId: listing.id }),
-                        });
-                        router.refresh();
-                      })
-                    }
-                  >
-                    {pending === listing.id ? 'Linking…' : 'Link listing'}
-                  </Button>
+                  <span className="seller-listing-state">
+                    {ready && listing.owned && checkoutAvailable
+                      ? 'Payments ready'
+                      : 'Awaiting setup'}
+                  </span>
                 )}
               </li>
             ))}

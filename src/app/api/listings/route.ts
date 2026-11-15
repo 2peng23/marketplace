@@ -7,7 +7,6 @@ import { findPublishedListing, publishListing } from '@/lib/server/publish-listi
 import { prepareListingImage } from '@/lib/server/images';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 import { errorResponse, parseInput, readForm } from '@/lib/server/http';
-import { currentSeller } from '@/lib/server/seller-session';
 
 export const runtime = 'nodejs';
 
@@ -19,12 +18,7 @@ export async function POST(request: Request) {
     if (previous) return NextResponse.json({ id: previous.id });
     const image = await prepareListingImage(form.get('photo'));
     await enforceRateLimit(request, 'listing');
-    const seller = await currentSeller();
-    const result = await publishListing(
-      input,
-      image,
-      seller?.email === input.sellerEmail ? seller.id : null,
-    );
+    const result = await publishListing(input, image);
     return NextResponse.json({ id: result.id }, { status: result.created ? 201 : 200 });
   } catch (error) {
     return errorResponse(error);

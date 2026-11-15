@@ -6,8 +6,7 @@ import { ConfigurationError, RequestError } from './errors';
 const hourlyLimits = {
   listing: 20,
   message: 40,
-  'seller-code': 8,
-  'seller-verify': 30,
+  seller: 30,
   checkout: 40,
   connect: 30,
 } as const;

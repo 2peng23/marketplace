@@ -61,7 +61,7 @@ export type Database = {
         { bucket: string; window_started: string; hits: number },
         { bucket: string; window_started: string; hits: number }
       >;
-      sellers: Table<SellerRow, Pick<SellerRow, 'id' | 'email'> & Partial<SellerRow>>;
+      sellers: Table<SellerRow, Pick<SellerRow, 'email'> & Partial<SellerRow>>;
       orders: Table<OrderRow, OrderRow>;
       stripe_webhook_events: Table<
         { id: string; event_type: string; processed_at: string },
@@ -80,9 +80,9 @@ export type Database = {
         Returns: ListingPage;
       };
       consume_rate_limit: { Args: { bucket_key: string; maximum_hits: number }; Returns: boolean };
-      claim_listing: {
-        Args: { listing_identifier: string; seller_identifier: string };
-        Returns: undefined;
+      connect_seller_email: {
+        Args: { seller_email: string };
+        Returns: SellerRow;
       };
       reserve_order: {
         Args: { listing_identifier: string; order_identifier: string; buyer_hash: string };
