@@ -23,7 +23,7 @@ Use the address printed by Next.js. The development server can select another po
 
 ## Design and structure
 
-The interface uses Geist Sans, a restrained green palette, a photo-led grid, plain category navigation, a live listing preview, and a native accessible message dialog. The SVG brand mark and derived icons are original to this project.
+The interface uses Geist Sans, shadcn/ui React components, and a Facebook Marketplace-inspired layout: category filters on the left, search and listings on the right, and an inline seller-message form on each item page. Create listing opens a large, compact dialog with the photo and all listing fields visible together. The `/create` address opens the same dialog over the marketplace. Search stays sticky, and the feed loads 12 listings per batch as its end enters view. My listings remembers up to 1,000 listing identifiers in this browser; it is a local list of public items, not an authenticated account or ownership permission. Earlier listings created before browser tracking was added are not imported automatically.
 
 - `src/app`: server-rendered routes and HTTP mutation handlers.
 - `src/components`: focused browsing, creation, messaging, and layout components.
@@ -40,7 +40,7 @@ Data reads remain on the server. Forms and the dialog are small client component
 
 Listings and product images are public. Buyer messages are private: anonymous and authenticated Data API roles have no message read or write grants. Mutation endpoints validate input and use a server-only secret key. That key bypasses RLS, so handler validation is part of the trust boundary.
 
-The seller email intentionally appears on the detail page, with disclosure in the creation form. Message recipients are resolved from the stored listing, never from client-provided seller details. Messages are stored in Supabase; email delivery and a seller inbox are not implemented.
+The seller email intentionally appears on the detail page, with disclosure in the creation form. Message recipients are resolved from the stored listing, never from client-provided seller details. Messages are stored privately in Supabase and emailed through the configured SMTP provider. The buyer’s email is set as Reply-To. A delivery timestamp prevents successful retries from sending another notification; failed sends retain the saved message and offer an email retry. SMTP acceptance does not guarantee inbox delivery. A seller inbox is not part of this app.
 
 Images are limited to 4 MB, decoded to verify their contents, bounded by pixel count, stripped of source metadata, resized when needed, and encoded as WebP. Original filenames never become Storage paths. The limit leaves room for multipart overhead on the hosting platform.
 
@@ -67,7 +67,7 @@ npm test
 npm run build
 ```
 
-For browser checks, run the app first and set `TEST_BASE_URL` to its address. Configure `SUPABASE_PUBLISHABLE_KEY` in `.env.local` for anonymous-permission assertions. These tests create controlled records, verify Storage and database persistence, and remove their own listings and messages afterward.
+For browser checks, configure `SUPABASE_PUBLISHABLE_KEY` in `.env.local` for anonymous-permission assertions, then run `npm run test:e2e`. Playwright builds and starts its own production server on port 3002 with a local SMTP receiver on port 3025. Test mail stays local and accepts only `.test` recipients. These tests create controlled records, verify Storage, database persistence, SMTP delivery/retry, infinite loading, and My listings, and remove their own listings and messages afterward.
 
 ```sh
 npm run test:e2e
@@ -88,3 +88,9 @@ Repository: https://github.com/2peng23/marketplace
 Submission screenshots and the separate 60-second showreel are delivered outside source control. All video, audio, capture, and render outputs are ignored by both Git and Vercel packaging. There is no embedded showreel or video dependency in the application.
 
 The requested narration voice for the film is `T2sZgOl8ol4kf4u6yM2z`. Rendering sources and media delivery status are provided separately with the final artifacts.
+
+### Gmail / SMTP setup
+
+Run `npm run email:setup` and open `http://127.0.0.1:3004`. Enter a Gmail address and a Google app password in the masked field. The local form verifies SMTP authentication before writing `.env` with owner-only file permissions. It is a separate loopback-only helper and is never part of the deployed website. Passwords are never returned to the browser, logged, or committed. Use `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, and `SMTP_SECURE` in Vercel’s server environment for production. Port 465 uses TLS directly; port 587 requires STARTTLS.
+
+Apply `supabase/migrations/002_email_delivery.sql` to an existing database before enabling email; it adds delivery and send-claim timestamps. This migration was applied to the connected development project. Completed deliveries are not retried. Failed attempts can retry; concurrent attempts use a two-minute database claim. As with SMTP generally, an ambiguous disconnect after server acceptance can cause a duplicate on retry. The email Message-ID remains stable across retries.

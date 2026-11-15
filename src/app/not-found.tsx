@@ -1,14 +1,15 @@
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 export default function NotFound() {
   return (
     <main id="main-content" className="page-container">
       <section className="empty-state">
-        <p className="eyebrow">404 · Nothing here</p>
-        <h1>This find has wandered off.</h1>
+        <p>404</p>
+        <h1>Listing not found</h1>
         <p>The listing may no longer be available, or the address isn’t quite right.</p>
-        <Link className="button button-primary" href="/">
-          Back to the marketplace
-        </Link>
+        <Button asChild>
+          <Link href="/">Back to the marketplace</Link>
+        </Button>
       </section>
     </main>
   );

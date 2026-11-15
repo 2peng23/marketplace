@@ -21,6 +21,11 @@ export type Listing = {
   created_at: string;
 };
 export type ListingPage = { items: Listing[]; count: number };
+export type ListingFeedPage = {
+  items: (Listing & { imageUrl: string })[];
+  count: number;
+  nextPage: number | null;
+};
 export const PAGE_SIZE = 12;
 export const MAX_IMAGE_BYTES = 4_000_000;
 export const categoryName = (category: string) =>

@@ -1,23 +1,35 @@
-export function SearchForm({ query, category }: { query: string; category: string }) {
+import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+export function SearchForm({
+  query,
+  category,
+  action = '/',
+}: {
+  query: string;
+  category: string;
+  action?: string;
+}) {
   return (
-    <form className="search-form" action="/" role="search">
-      <label className="visually-hidden" htmlFor="marketplace-search">
-        Search listings
-      </label>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="10.8" cy="10.8" r="6.3" stroke="currentColor" strokeWidth="1.7" />
-        <path d="m15.5 15.5 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      </svg>
-      <input
-        id="marketplace-search"
-        name="q"
-        placeholder="What are you looking for?"
-        defaultValue={query}
-        maxLength={100}
-        type="search"
-      />
+    <form className="search-form" action={action} role="search">
+      <div className="search-input-wrap">
+        <Search size={18} aria-hidden="true" />
+        <label className="visually-hidden" htmlFor="marketplace-search">
+          Search listings
+        </label>
+        <Input
+          id="marketplace-search"
+          name="q"
+          placeholder="Search listings"
+          defaultValue={query}
+          key={query}
+          maxLength={100}
+          type="search"
+        />
+      </div>
       {category && <input type="hidden" name="category" value={category} />}
-      <button type="submit">Search</button>
+      <Button type="submit">Search</Button>
     </form>
   );
 }

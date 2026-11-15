@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { categoryName, formatPrice, type Listing } from '@/lib/marketplace';
+import { Card } from '@/components/ui/card';
 
 export function ListingCard({
   listing,
@@ -15,19 +16,16 @@ export function ListingCard({
 }) {
   const destination = `/listings/${listing.id}${returnTo && returnTo !== '/' ? `?from=${encodeURIComponent(returnTo)}` : ''}`;
   return (
-    <article className="listing-card">
+    <Card className="listing-card">
       <Link href={destination} className="listing-card-link">
         <div className="listing-image">
           <Image
             src={image}
             alt={listing.title}
             fill
-            sizes="(max-width: 580px) 50vw, (max-width: 900px) 33vw, 25vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 25vw"
             priority={priority}
           />
-          <span className="image-arrow" aria-hidden="true">
-            ↗
-          </span>
         </div>
         <div className="listing-card-content">
           <div className="listing-price">{formatPrice(listing.price)}</div>
@@ -35,6 +33,6 @@ export function ListingCard({
           <p>{categoryName(listing.category)}</p>
         </div>
       </Link>
-    </article>
+    </Card>
   );
 }

@@ -1,3 +1,5 @@
+import { Skeleton } from '@/components/ui/skeleton';
+
 export default function Loading() {
   return (
     <main
@@ -6,14 +8,14 @@ export default function Loading() {
       aria-busy="true"
       aria-label="Loading marketplace"
     >
-      <div className="skeleton skeleton-heading" />
-      <div className="skeleton skeleton-tabs" />
+      <Skeleton className="skeleton-heading" />
+      <Skeleton className="skeleton-search" />
       <div className="listing-grid">
         {Array.from({ length: 8 }, (_, index) => (
           <div key={index}>
-            <div className="skeleton skeleton-image" />
-            <div className="skeleton skeleton-line" />
-            <div className="skeleton skeleton-line short" />
+            <Skeleton className="skeleton-image" />
+            <Skeleton className="skeleton-line" />
+            <Skeleton className="skeleton-line short" />
           </div>
         ))}
       </div>

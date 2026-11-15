@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
-import { listingSchema, validationFields } from '@/lib/validation';
+import { feedParametersSchema, listingSchema, validationFields } from '@/lib/validation';
 import { MAX_IMAGE_BYTES } from '@/lib/marketplace';
 import { getSupabase } from '@/lib/server/supabase';
+import { browseListings } from '@/lib/server/listings';
+import { serializeListingFeed } from '@/lib/server/listing-feed';
 import { checkRequest, enforceRateLimit, errorResponse, RequestError } from '@/lib/server/requests';
 
 export const runtime = 'nodejs';
@@ -71,22 +73,36 @@ export async function POST(request: Request) {
       if (concurrent.data) return NextResponse.json({ id: concurrent.data.id });
       throw new RequestError('The photo could not be uploaded. Please try again in a moment.', 503);
     }
-    const result = await supabase
-      .from('listings')
-      .insert({
-        id: input.requestId,
-        title: input.title,
-        description: input.description,
-        price: input.price,
-        category: input.category,
-        seller_email: input.sellerEmail,
-        image_path: path,
-      });
+    const result = await supabase.from('listings').insert({
+      id: input.requestId,
+      title: input.title,
+      description: input.description,
+      price: input.price,
+      category: input.category,
+      seller_email: input.sellerEmail,
+      image_path: path,
+    });
     if (result.error) {
       await supabase.storage.from('listing-images').remove([path]);
       throw new RequestError('Your listing could not be saved. Please try again.', 503);
     }
     return NextResponse.json({ id: input.requestId }, { status: 201 });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const parsed = feedParametersSchema.safeParse(
+      Object.fromEntries(new URL(request.url).searchParams),
+    );
+    if (!parsed.success) throw new RequestError('These listings could not be loaded.');
+    const { category, q, page } = parsed.data;
+    const listings = await browseListings(category, q, page);
+    return NextResponse.json(serializeListingFeed(listings, page), {
+      headers: { 'Cache-Control': 'no-store' },
+    });
   } catch (error) {
     return errorResponse(error);
   }

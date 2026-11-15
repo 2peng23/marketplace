@@ -2,7 +2,12 @@ import { z } from 'zod';
 import { categories } from './marketplace';
 
 export const identifierSchema = z.uuid();
-export const categorySchema = z.enum(categories.map((category) => category.slug));
+export const categorySchema = z.enum(
+  categories.map((category) => category.slug),
+  {
+    error: 'Choose a category.',
+  },
+);
 export const priceSchema = z
   .string()
   .trim()
@@ -44,3 +49,9 @@ export const messageSchema = z
 export function validationFields(error: z.ZodError) {
   return Object.fromEntries(error.issues.map((issue) => [String(issue.path[0]), issue.message]));
 }
+
+export const feedParametersSchema = z.object({
+  page: z.coerce.number().int().min(1).max(1000).default(1),
+  category: z.union([categorySchema, z.literal('')]).default(''),
+  q: z.string().trim().max(100).default(''),
+});

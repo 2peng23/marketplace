@@ -1,10 +1,15 @@
 'use client';
 import { useRef, useState, type FormEvent } from 'react';
 import { messageSchema, validationFields } from '@/lib/validation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export function MessageSeller({ listingId, title }: { listingId: string; title: string }) {
-  const dialogReference = useRef<HTMLDialogElement>(null);
-  const requestIdentifier = useRef('');
+  const requestIdentifier = useRef({ id: '', contents: '' });
+  const [emailError, setEmailError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -13,9 +18,12 @@ export function MessageSeller({ listingId, title }: { listingId: string; title: 
     event.preventDefault();
     if (submitting) return;
     const form = new FormData(event.currentTarget);
-    if (!requestIdentifier.current) requestIdentifier.current = crypto.randomUUID();
+    const contents = JSON.stringify([form.get('buyerEmail'), form.get('message')]);
+    if (!requestIdentifier.current.id || requestIdentifier.current.contents !== contents) {
+      requestIdentifier.current = { id: crypto.randomUUID(), contents };
+    }
     const input = {
-      requestId: requestIdentifier.current,
+      requestId: requestIdentifier.current.id,
       listingId,
       buyerEmail: form.get('buyerEmail'),
       message: form.get('message'),
@@ -39,7 +47,14 @@ export function MessageSeller({ listingId, title }: { listingId: string; title: 
         setFields(payload.fields ?? {});
         throw new Error(payload.error ?? 'Please try again.');
       }
-      setSaved(true);
+      if (payload.emailSent) {
+        setSaved(true);
+        setEmailError('');
+      } else
+        setEmailError(
+          payload.emailError ||
+            'Your message is saved, but email could not be sent. Please try again.',
+        );
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Please try again.');
     } finally {
@@ -47,113 +62,71 @@ export function MessageSeller({ listingId, title }: { listingId: string; title: 
     }
   }
   return (
-    <>
-      <button
-        className="button button-primary message-trigger"
-        onClick={() => dialogReference.current?.showModal()}
-      >
-        Message seller <span aria-hidden="true">↗</span>
-      </button>
-      <dialog
-        ref={dialogReference}
-        className="message-dialog"
-        aria-labelledby="message-title"
-        onClick={(event) => {
-          if (event.target === event.currentTarget && !submitting) dialogReference.current?.close();
-        }}
-        onCancel={(event) => {
-          if (submitting) event.preventDefault();
-        }}
-      >
-        <button
-          className="dialog-close"
-          type="button"
-          aria-label="Close message"
-          onClick={() => dialogReference.current?.close()}
-          disabled={submitting}
-        >
-          ×
-        </button>
-        {saved ? (
-          <div className="message-success" role="status">
-            <span className="success-mark" aria-hidden="true">
-              ✓
-            </span>
-            <p className="eyebrow">A CONVERSATION STARTS HERE</p>
-            <h2 id="message-title">Your message is saved.</h2>
-            <p>
-              We’ve saved your inquiry about <strong>{title}</strong> and your contact email.
-            </p>
-            <p className="field-help">
-              Email notifications are not enabled. You can also contact the seller using the email
-              on the listing.
-            </p>
-            <button
-              className="button button-primary"
-              onClick={() => dialogReference.current?.close()}
-            >
-              Back to the listing
-            </button>
+    <section className="message-seller" aria-label={`Message seller about ${title}`}>
+      <h2>Message seller</h2>
+      {saved ? (
+        <Alert className="message-success" role="status">
+          <AlertTitle>Message sent.</AlertTitle>
+          <AlertDescription>
+            Your inquiry was emailed to the seller. Replies go to your email address.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <form onSubmit={submitMessage} noValidate aria-busy={submitting}>
+          <div className="field">
+            <Label htmlFor="buyerEmail">Your email</Label>
+            <Input
+              id="buyerEmail"
+              name="buyerEmail"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              maxLength={254}
+              required
+              disabled={submitting}
+              aria-invalid={!!fields.buyerEmail}
+              aria-describedby={fields.buyerEmail ? 'buyerEmail-error' : undefined}
+            />
+            {fields.buyerEmail && (
+              <span className="field-error" id="buyerEmail-error">
+                {fields.buyerEmail}
+              </span>
+            )}
           </div>
-        ) : (
-          <>
-            <p className="eyebrow">ABOUT THIS FIND</p>
-            <h2 id="message-title">Say hello to the seller.</h2>
-            <p className="dialog-item-title">{title}</p>
-            <form onSubmit={submitMessage} noValidate aria-busy={submitting}>
-              <div className="field">
-                <label htmlFor="buyerEmail">Your email</label>
-                <input
-                  id="buyerEmail"
-                  name="buyerEmail"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  maxLength={254}
-                  required
-                  aria-invalid={!!fields.buyerEmail}
-                  aria-describedby={fields.buyerEmail ? 'buyerEmail-error' : 'buyer-help'}
-                />
-                {fields.buyerEmail && (
-                  <span className="field-error" id="buyerEmail-error">
-                    {fields.buyerEmail}
-                  </span>
-                )}
-                <span className="field-help" id="buyer-help">
-                  Included with your message so the seller can reply.
-                </span>
-              </div>
-              <div className="field">
-                <label htmlFor="message">Your message</label>
-                <textarea
-                  id="message"
-                  name="message"
-                  placeholder="Hi! Is this still available?"
-                  rows={5}
-                  maxLength={2000}
-                  required
-                  aria-invalid={!!fields.message}
-                  aria-describedby={fields.message ? 'message-error' : undefined}
-                />
-                {fields.message && (
-                  <span className="field-error" id="message-error">
-                    {fields.message}
-                  </span>
-                )}
-              </div>
-              {error && (
-                <p className="form-error" role="alert">
-                  {error}
-                </p>
-              )}
-              <button className="button button-primary message-submit" disabled={submitting}>
-                {submitting ? 'Saving your message…' : 'Send message'}
-              </button>
-              <p className="dialog-note">Your message is saved privately. No account needed.</p>
-            </form>
-          </>
-        )}
-      </dialog>
-    </>
+          <div className="field">
+            <Label htmlFor="message">Your message</Label>
+            <Textarea
+              id="message"
+              name="message"
+              rows={3}
+              maxLength={2000}
+              required
+              defaultValue="Hi, is this still available?"
+              disabled={submitting}
+              aria-invalid={!!fields.message}
+              aria-describedby={fields.message ? 'message-error' : undefined}
+            />
+            {fields.message && (
+              <span className="field-error" id="message-error">
+                {fields.message}
+              </span>
+            )}
+          </div>
+          {emailError && (
+            <Alert className="email-retry-notice">
+              <AlertDescription>{emailError}</AlertDescription>
+            </Alert>
+          )}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <Button className="message-submit" disabled={submitting}>
+            {submitting ? 'Sending…' : emailError ? 'Retry email' : 'Send message'}
+          </Button>
+        </form>
+      )}
+    </section>
   );
 }
